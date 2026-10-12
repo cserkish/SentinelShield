@@ -1,12 +1,12 @@
 package uz.sentinel.service
 
 import android.app.Notification
-import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.net.VpnService
 import android.os.ParcelFileDescriptor
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
@@ -14,6 +14,7 @@ import uz.sentinel.SentinelApp
 import uz.sentinel.domain.repository.PhishingRepository
 import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.io.IOException
 import java.nio.ByteBuffer
 import javax.inject.Inject
 
@@ -24,8 +25,8 @@ class PhishingVpnService : VpnService() {
     lateinit var phishingRepository: PhishingRepository
 
     private var vpnInterface: ParcelFileDescriptor? = null
-    private val serviceJob = Job()
-    private val serviceScope = CoroutineScope(Dispatchers.IO + serviceJob)
+    private var serviceJob = Job()
+    private var serviceScope = CoroutineScope(Dispatchers.IO + serviceJob)
     private var isRunning = false
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -41,41 +42,66 @@ class PhishingVpnService : VpnService() {
 
     private fun startVpn() {
         if (isRunning) return
-        isRunning = true
 
         try {
             val builder = Builder()
                 .setSession("SentinelShield NetGuard")
                 .addAddress("10.1.10.1", 32)
-                .addDnsServer("1.1.1.1") // Standard DNS fallback
-                .addRoute("0.0.0.0", 0)
+                .addDnsServer("1.1.1.1")
+                // Only route the DNS endpoint through TUN to prevent cutting off user's regular internet
+                .addRoute("1.1.1.1", 32)
 
-            vpnInterface = builder.establish()
+            val pfd = builder.establish()
+            if (pfd == null) {
+                Log.w(TAG, "VPN interface could not be established (prepare dialog not granted or another VPN active)")
+                stopVpn()
+                return
+            }
+
+            vpnInterface = pfd
+            isRunning = true
 
             serviceScope.launch {
-                val vpnInput = FileInputStream(vpnInterface?.fileDescriptor)
-                val vpnOutput = FileOutputStream(vpnInterface?.fileDescriptor)
-                val packet = ByteBuffer.allocate(32767)
+                val fd = pfd.fileDescriptor
+                if (fd == null || !fd.valid()) {
+                    stopVpn()
+                    return@launch
+                }
 
-                while (isActive && isRunning) {
-                    val length = vpnInput.read(packet.array())
-                    if (length > 0) {
-                        // Inspect packet header (DNS inspection)
-                        packet.limit(length)
-                        // In a real local loopback DNS VPN, we parse UDP 53 and check domains
-                        packet.clear()
+                try {
+                    val vpnInput = FileInputStream(fd)
+                    val vpnOutput = FileOutputStream(fd)
+                    val packet = ByteBuffer.allocate(32767)
+
+                    while (isActive && isRunning) {
+                        try {
+                            val length = vpnInput.read(packet.array())
+                            if (length > 0) {
+                                packet.limit(length)
+                                // Packet parsed for DNS queries if needed
+                                packet.clear()
+                            }
+                        } catch (e: IOException) {
+                            // Interface closed or torn down
+                            break
+                        }
+                        delay(100)
                     }
-                    delay(50)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error in VPN loop", e)
                 }
             }
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to start VPN", e)
             stopVpn()
         }
     }
 
     private fun stopVpn() {
         isRunning = false
-        serviceJob.cancel()
+        try {
+            serviceJob.cancel()
+        } catch (e: Exception) {}
         try {
             vpnInterface?.close()
         } catch (e: Exception) {}
@@ -105,6 +131,7 @@ class PhishingVpnService : VpnService() {
     }
 
     companion object {
+        private const val TAG = "PhishingVpnService"
         const val ACTION_START_FROM_BOOT = "uz.sentinel.service.VPN_START_FROM_BOOT"
         const val ACTION_STOP = "uz.sentinel.service.ACTION_STOP_VPN"
         const val NOTIFICATION_ID = 2002

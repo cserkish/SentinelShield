@@ -183,4 +183,8 @@ class LockScreenViewModel @Inject constructor(
     fun resetPin() {
         _uiState.update { it.copy(pinDigits = emptyList(), errorMessage = null) }
     }
+
+    fun switchToPin() {
+        _uiState.update { it.copy(lockMethod = LockMethod.PIN, errorMessage = null) }
+    }
 }

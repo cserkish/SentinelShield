@@ -21,13 +21,17 @@ class JunkScannerRepositoryImpl @Inject constructor(
         val junkList = mutableListOf<JunkItem>()
 
         // 1. App Cache (Internal and External)
-        scanDirectoryForJunk(context.cacheDir, JunkCategory.APP_CACHE, junkList)
-        context.externalCacheDir?.let { scanDirectoryForJunk(it, JunkCategory.APP_CACHE, junkList) }
+        runCatching {
+            scanDirectoryForJunk(context.cacheDir, JunkCategory.APP_CACHE, junkList)
+            context.externalCacheDir?.let { scanDirectoryForJunk(it, JunkCategory.APP_CACHE, junkList) }
+        }
 
         // 2. Temp and Log files in accessible external storage
-        val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-        if (downloadsDir != null && downloadsDir.exists()) {
-            scanTempFiles(downloadsDir, junkList)
+        runCatching {
+            val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+            if (downloadsDir != null && downloadsDir.exists()) {
+                scanTempFiles(downloadsDir, junkList)
+            }
         }
 
         junkList
@@ -36,11 +40,13 @@ class JunkScannerRepositoryImpl @Inject constructor(
     override suspend fun deleteJunk(items: List<JunkItem>): Long = withContext(Dispatchers.IO) {
         var totalFreedBytes = 0L
         for (item in items) {
-            val file = File(item.path)
-            if (file.exists() && isSafeToDelete(file)) {
-                val size = if (file.isDirectory) file.walkTopDown().sumOf { it.length() } else file.length()
-                if (file.deleteRecursively()) {
-                    totalFreedBytes += size
+            runCatching {
+                val file = File(item.path)
+                if (file.exists() && isSafeToDelete(file)) {
+                    val size = if (file.isDirectory) file.walkTopDown().sumOf { it.length() } else file.length()
+                    if (file.deleteRecursively()) {
+                        totalFreedBytes += size
+                    }
                 }
             }
         }
@@ -48,51 +54,58 @@ class JunkScannerRepositoryImpl @Inject constructor(
     }
 
     private fun scanDirectoryForJunk(dir: File, category: JunkCategory, list: MutableList<JunkItem>) {
-        if (!dir.exists() || !dir.isDirectory) return
-        dir.listFiles()?.forEach { file ->
-            val size = if (file.isDirectory) file.walkTopDown().sumOf { it.length() } else file.length()
-            if (size > 0) {
-                list.add(
-                    JunkItem(
-                        path = file.absolutePath,
-                        name = file.name,
-                        sizeBytes = size,
-                        category = category
+        runCatching {
+            if (!dir.exists() || !dir.isDirectory) return
+            dir.listFiles()?.forEach { file ->
+                val size = if (file.isDirectory) {
+                    file.walkTopDown().filter { it.isFile }.sumOf { it.length() }
+                } else file.length()
+                if (size > 0) {
+                    list.add(
+                        JunkItem(
+                            path = file.absolutePath,
+                            name = file.name,
+                            sizeBytes = size,
+                            category = category
+                        )
                     )
-                )
+                }
             }
         }
     }
 
     private fun scanTempFiles(dir: File, list: MutableList<JunkItem>) {
-        dir.walkTopDown()
-            .maxDepth(3)
-            .filter { it.isFile }
-            .forEach { file ->
-                val name = file.name.lowercase()
-                when {
-                    name.endsWith(".tmp") || name.endsWith(".log") || name.endsWith(".bak") || name.endsWith(".crdownload") -> {
-                        list.add(
-                            JunkItem(
-                                path = file.absolutePath,
-                                name = file.name,
-                                sizeBytes = file.length(),
-                                category = JunkCategory.TEMP_FILES
+        runCatching {
+            if (!dir.exists() || !dir.isDirectory) return
+            dir.walkTopDown()
+                .maxDepth(3)
+                .filter { it.isFile }
+                .forEach { file ->
+                    val name = file.name.lowercase()
+                    when {
+                        name.endsWith(".tmp") || name.endsWith(".log") || name.endsWith(".bak") || name.endsWith(".crdownload") -> {
+                            list.add(
+                                JunkItem(
+                                    path = file.absolutePath,
+                                    name = file.name,
+                                    sizeBytes = file.length(),
+                                    category = JunkCategory.TEMP_FILES
+                                )
                             )
-                        )
-                    }
-                    name.endsWith(".apk") -> {
-                        list.add(
-                            JunkItem(
-                                path = file.absolutePath,
-                                name = file.name,
-                                sizeBytes = file.length(),
-                                category = JunkCategory.DOWNLOADED_APKS
+                        }
+                        name.endsWith(".apk") -> {
+                            list.add(
+                                JunkItem(
+                                    path = file.absolutePath,
+                                    name = file.name,
+                                    sizeBytes = file.length(),
+                                    category = JunkCategory.DOWNLOADED_APKS
+                                )
                             )
-                        )
+                        }
                     }
                 }
-            }
+        }
     }
 
     private fun isSafeToDelete(file: File): Boolean {

@@ -9,3 +9,7 @@ app/build
 .externalNativeBuild
 .cxx
 local.properties
+*.apk
+*.json
+*.log
+*.txt

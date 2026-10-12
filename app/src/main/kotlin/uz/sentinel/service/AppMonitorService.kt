@@ -22,6 +22,7 @@ import androidx.core.app.NotificationCompat
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
 import uz.sentinel.SentinelApp
+import uz.sentinel.core.utils.IntruderSelfieManager
 import uz.sentinel.domain.repository.AppLockRepository
 import uz.sentinel.presentation.applock.LockOverlayView
 import javax.inject.Inject
@@ -31,6 +32,9 @@ class AppMonitorService : Service() {
 
     @Inject
     lateinit var appLockRepository: AppLockRepository
+
+    @Inject
+    lateinit var intruderSelfieManager: IntruderSelfieManager
 
     private lateinit var windowManager: WindowManager
     private lateinit var usageStatsManager: UsageStatsManager
@@ -174,7 +178,11 @@ class AppMonitorService : Service() {
                 gravity = Gravity.CENTER
             }
 
-            val lockView = LockOverlayView(this).apply {
+            val lockView = LockOverlayView(
+                context = this,
+                appLockRepository = appLockRepository,
+                intruderSelfieManager = intruderSelfieManager
+            ).apply {
                 setPackageName(targetPackage)
                 setOnUnlockListener {
                     currentLockedPackage = null

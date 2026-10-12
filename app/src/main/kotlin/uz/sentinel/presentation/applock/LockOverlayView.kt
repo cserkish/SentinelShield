@@ -3,6 +3,9 @@ package uz.sentinel.presentation.applock
 import android.content.Context
 import android.util.AttributeSet
 import android.widget.FrameLayout
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.ComposeView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
@@ -15,10 +18,14 @@ import androidx.savedstate.SavedStateRegistry
 import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
+import uz.sentinel.core.utils.IntruderSelfieManager
+import uz.sentinel.domain.repository.AppLockRepository
 import uz.sentinel.presentation.theme.SentinelShieldTheme
 
-class LockOverlayView @JvmOverloads constructor(
+class LockOverlayView(
     context: Context,
+    private val appLockRepository: AppLockRepository,
+    private val intruderSelfieManager: IntruderSelfieManager,
     attrs: AttributeSet? = null
 ) : FrameLayout(context, attrs),
     LifecycleOwner,
@@ -33,8 +40,9 @@ class LockOverlayView @JvmOverloads constructor(
     override val lifecycle: Lifecycle get() = lifecycleRegistry
     override val viewModelStore: ViewModelStore = ViewModelStore()
 
-    private var packageNameState: String = ""
+    private var packageNameState by mutableStateOf("")
     private var onUnlockListener: (() -> Unit)? = null
+    private val viewModel = LockScreenViewModel(appLockRepository, intruderSelfieManager)
 
     init {
         savedStateRegistryController.performRestore(null)
@@ -47,7 +55,8 @@ class LockOverlayView @JvmOverloads constructor(
                 SentinelShieldTheme {
                     LockScreen(
                         packageName = packageNameState,
-                        onUnlocked = { onUnlockListener?.invoke() }
+                        onUnlocked = { onUnlockListener?.invoke() },
+                        viewModel = viewModel
                     )
                 }
             }
@@ -58,6 +67,7 @@ class LockOverlayView @JvmOverloads constructor(
 
     fun setPackageName(pkg: String) {
         packageNameState = pkg
+        viewModel.init(pkg)
     }
 
     fun setOnUnlockListener(listener: () -> Unit) {

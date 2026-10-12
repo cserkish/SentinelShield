@@ -92,6 +92,7 @@ fun AppNavigation(
         composable(Screen.AppLock.route) {
             AppLockListScreen(
                 lockedAppDao = lockedAppDao,
+                preferences = preferences,
                 onNavigateBack = { navController.popBackStack() }
             )
         }

@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Lock
@@ -22,14 +23,21 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import uz.sentinel.data.local.db.LockedAppDao
 import uz.sentinel.data.local.entity.LockedAppEntity
+import uz.sentinel.data.local.prefs.SentinelPreferences
+import uz.sentinel.service.AppMonitorService
 
 data class AppLockItem(
     val packageName: String,
@@ -41,6 +49,7 @@ data class AppLockItem(
 @Composable
 fun AppLockListScreen(
     lockedAppDao: LockedAppDao,
+    preferences: SentinelPreferences,
     onNavigateBack: () -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -53,6 +62,23 @@ fun AppLockListScreen(
     }
     var hasUsagePermission by remember {
         mutableStateOf(checkUsageStatsPermission(context))
+    }
+
+    val savedPin by preferences.appLockPinHash.collectAsState(initial = null)
+    var showSetPinDialog by remember { mutableStateOf(false) }
+    var pendingAppToLock by remember { mutableStateOf<AppLockItem?>(null) }
+
+    // Recheck permissions on resume
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                hasOverlayPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) Settings.canDrawOverlays(context) else true
+                hasUsagePermission = checkUsageStatsPermission(context)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     LaunchedEffect(Unit) {
@@ -160,7 +186,10 @@ fun AppLockListScreen(
                     Column {
                         Text("Shaxsiy ilovalar himoyasi", fontWeight = FontWeight.Bold, fontSize = 15.sp)
                         Text(
-                            "Qulflangan ilovalar ochilganda PIN kod so'raladi (Boshlang'ich PIN: 000000)",
+                            text = if (savedPin.isNullOrEmpty())
+                                "Ilovalarni qulflash uchun shaxsiy 6 xonali PIN o'rnating."
+                            else
+                                "Qulflangan ilovalar ochilganda PIN kod so'raladi.",
                             style = MaterialTheme.typography.bodySmall
                         )
                     }
@@ -182,19 +211,30 @@ fun AppLockListScreen(
                         AppLockRow(
                             item = app,
                             onToggle = { isChecked ->
-                                scope.launch(Dispatchers.IO) {
-                                    if (isChecked) {
-                                        lockedAppDao.lockApp(
-                                            LockedAppEntity(
-                                                packageName = app.packageName,
-                                                appName = app.appName
-                                            )
-                                        )
+                                if (isChecked) {
+                                    if (savedPin.isNullOrEmpty()) {
+                                        pendingAppToLock = app
+                                        showSetPinDialog = true
                                     } else {
-                                        lockedAppDao.setLockStatus(app.packageName, false)
+                                        scope.launch(Dispatchers.IO) {
+                                            lockedAppDao.lockApp(
+                                                LockedAppEntity(
+                                                    packageName = app.packageName,
+                                                    appName = app.appName
+                                                )
+                                            )
+                                            appList = appList.map {
+                                                if (it.packageName == app.packageName) it.copy(isLocked = true) else it
+                                            }
+                                        }
+                                        AppMonitorService.start(context)
                                     }
-                                    appList = appList.map {
-                                        if (it.packageName == app.packageName) it.copy(isLocked = isChecked) else it
+                                } else {
+                                    scope.launch(Dispatchers.IO) {
+                                        lockedAppDao.setLockStatus(app.packageName, false)
+                                        appList = appList.map {
+                                            if (it.packageName == app.packageName) it.copy(isLocked = false) else it
+                                        }
                                     }
                                 }
                             }
@@ -204,6 +244,99 @@ fun AppLockListScreen(
             }
         }
     }
+
+    // Set Initial PIN Dialog
+    if (showSetPinDialog) {
+        SetPinDialog(
+            onDismiss = {
+                showSetPinDialog = false
+                pendingAppToLock = null
+            },
+            onPinSet = { pin ->
+                showSetPinDialog = false
+                scope.launch {
+                    preferences.savePinHash(pin)
+                    preferences.setAppLockEnabled(true)
+                    pendingAppToLock?.let { app ->
+                        withContext(Dispatchers.IO) {
+                            lockedAppDao.lockApp(
+                                LockedAppEntity(
+                                    packageName = app.packageName,
+                                    appName = app.appName
+                                )
+                            )
+                        }
+                        appList = appList.map {
+                            if (it.packageName == app.packageName) it.copy(isLocked = true) else it
+                        }
+                        AppMonitorService.start(context)
+                    }
+                    pendingAppToLock = null
+                }
+            }
+        )
+    }
+}
+
+@Composable
+fun SetPinDialog(
+    onDismiss: () -> Unit,
+    onPinSet: (String) -> Unit
+) {
+    var pin by remember { mutableStateOf("") }
+    var confirmPin by remember { mutableStateOf("") }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Yangi PIN kod o'rnating", fontWeight = FontWeight.Bold) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("Qulflangan ilovalarni ochish uchun 6 xonali shaxsiy PIN kod kiriting.")
+                OutlinedTextField(
+                    value = pin,
+                    onValueChange = { if (it.length <= 6 && it.all { c -> c.isDigit() }) pin = it },
+                    label = { Text("6 xonali PIN") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                    visualTransformation = PasswordVisualTransformation(),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = confirmPin,
+                    onValueChange = { if (it.length <= 6 && it.all { c -> c.isDigit() }) confirmPin = it },
+                    label = { Text("PIN kodni tasdiqlang") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                    visualTransformation = PasswordVisualTransformation(),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                if (errorMessage != null) {
+                    Text(text = errorMessage!!, color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    if (pin.length != 6) {
+                        errorMessage = "PIN aynan 6 ta raqam bo'lishi kerak"
+                    } else if (pin != confirmPin) {
+                        errorMessage = "Kiritilgan PIN kodlar mos kelmadi"
+                    } else {
+                        onPinSet(pin)
+                    }
+                }
+            ) {
+                Text("Saqlash va Qulflash")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Bekor qilish")
+            }
+        }
+    )
 }
 
 private fun checkUsageStatsPermission(context: Context): Boolean {

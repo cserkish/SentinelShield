@@ -54,7 +54,7 @@ class AntivirusViewModel @Inject constructor(
                         packageName = entity.packageName,
                         appName = entity.appName,
                         dangerScore = entity.dangerScore,
-                        dangerLevel = DangerLevel.valueOf(entity.dangerLevel),
+                        dangerLevel = DangerLevel.entries.find { it.name == entity.dangerLevel } ?: DangerLevel.SAFE,
                         detectedPermissions = entity.detectedPermissions.split(",").filter { it.isNotBlank() },
                         isKnownMalware = entity.isKnownMalware,
                         malwareName = entity.malwareName,
