@@ -6,7 +6,9 @@ import androidx.datastore.preferences.core.*
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
+import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -27,31 +29,40 @@ class SentinelPreferences @Inject constructor(
         val KEY_LAST_CLEAN_BYTES = longPreferencesKey("last_clean_bytes")
     }
 
-    val isOnboardingCompleted: Flow<Boolean> = context.dataStore.data.map { prefs ->
+    private val safePrefsFlow: Flow<Preferences> = context.dataStore.data
+        .catch { exception ->
+            if (exception is IOException) {
+                emit(emptyPreferences())
+            } else {
+                throw exception
+            }
+        }
+
+    val isOnboardingCompleted: Flow<Boolean> = safePrefsFlow.map { prefs ->
         prefs[KEY_ONBOARDING_COMPLETED] ?: false
     }
 
-    val isBrandStabilityConfigured: Flow<Boolean> = context.dataStore.data.map { prefs ->
+    val isBrandStabilityConfigured: Flow<Boolean> = safePrefsFlow.map { prefs ->
         prefs[KEY_BRAND_STABILITY_CONFIGURED] ?: false
     }
 
-    val isAppLockEnabled: Flow<Boolean> = context.dataStore.data.map { prefs ->
+    val isAppLockEnabled: Flow<Boolean> = safePrefsFlow.map { prefs ->
         prefs[KEY_APPLOCK_ENABLED] ?: false
     }
 
-    val appLockPinHash: Flow<String?> = context.dataStore.data.map { prefs ->
+    val appLockPinHash: Flow<String?> = safePrefsFlow.map { prefs ->
         prefs[KEY_APPLOCK_PIN_HASH]
     }
 
-    val isNetGuardEnabled: Flow<Boolean> = context.dataStore.data.map { prefs ->
+    val isNetGuardEnabled: Flow<Boolean> = safePrefsFlow.map { prefs ->
         prefs[KEY_NETGUARD_ENABLED] ?: false
     }
 
-    val lastScanTimestamp: Flow<Long> = context.dataStore.data.map { prefs ->
+    val lastScanTimestamp: Flow<Long> = safePrefsFlow.map { prefs ->
         prefs[KEY_LAST_SCAN_TIMESTAMP] ?: 0L
     }
 
-    val lastCleanBytes: Flow<Long> = context.dataStore.data.map { prefs ->
+    val lastCleanBytes: Flow<Long> = safePrefsFlow.map { prefs ->
         prefs[KEY_LAST_CLEAN_BYTES] ?: 0L
     }
 

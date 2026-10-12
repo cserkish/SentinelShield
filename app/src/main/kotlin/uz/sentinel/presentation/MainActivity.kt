@@ -7,12 +7,11 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import androidx.lifecycle.lifecycleScope
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
 import uz.sentinel.data.local.db.LockedAppDao
 import uz.sentinel.data.local.prefs.SentinelPreferences
 import uz.sentinel.presentation.theme.SentinelShieldTheme
@@ -32,17 +31,20 @@ class MainActivity : ComponentActivity() {
     ) { /* Handled */ }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        installSplashScreen()
+        val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
 
         requestRequiredPermissions()
 
-        lifecycleScope.launch {
-            val isOnboardingCompleted = preferences.isOnboardingCompleted.first()
-            val startDest = if (isOnboardingCompleted) Screen.Dashboard.route else Screen.Onboarding.route
+        setContent {
+            val isOnboardingCompleted by preferences.isOnboardingCompleted.collectAsState(initial = null)
 
-            setContent {
-                SentinelShieldTheme {
+            splashScreen.setKeepOnScreenCondition { isOnboardingCompleted == null }
+
+            SentinelShieldTheme {
+                val completed = isOnboardingCompleted
+                if (completed != null) {
+                    val startDest = if (completed) Screen.Dashboard.route else Screen.Onboarding.route
                     AppNavigation(
                         startDestination = startDest,
                         preferences = preferences,
