@@ -105,6 +105,7 @@ class PhishingVpnService : VpnService() {
     }
 
     companion object {
+        const val ACTION_START_FROM_BOOT = "uz.sentinel.service.VPN_START_FROM_BOOT"
         const val ACTION_STOP = "uz.sentinel.service.ACTION_STOP_VPN"
         const val NOTIFICATION_ID = 2002
     }

@@ -104,14 +104,15 @@ class PermissionAuditRepositoryImpl @Inject constructor(
             }
             if (grantedDangerous.isEmpty()) return@mapNotNull null
 
+            val appInfo = pkgInfo.applicationInfo ?: return@mapNotNull null
             val appName = try {
-                pm.getApplicationLabel(pkgInfo.applicationInfo).toString()
+                pm.getApplicationLabel(appInfo).toString()
             } catch (_: Exception) {
                 pkgInfo.packageName
             }
 
             val hasBackground = android.Manifest.permission.ACCESS_BACKGROUND_LOCATION in grantedDangerous
-            val lastUsed = resolveLastUsed(appOps, pkgInfo.packageName, pkgInfo.applicationInfo.uid, grantedDangerous)
+            val lastUsed = resolveLastUsed(appOps, pkgInfo.packageName, appInfo.uid, grantedDangerous)
 
             AppPermissionInfo(
                 packageName           = pkgInfo.packageName,
@@ -124,8 +125,8 @@ class PermissionAuditRepositoryImpl @Inject constructor(
     }
 
     /**
-     * Resolves the most-recent last-used timestamp among all granted permissions
-     * for the given package. Returns 0 if unavailable or pre-Android 11.
+     * Resolves the last-used timestamp among granted permissions.
+     * Detailed AppOps history requires system-level signature permissions.
      */
     private fun resolveLastUsed(
         appOps: AppOpsManager?,
@@ -133,24 +134,6 @@ class PermissionAuditRepositoryImpl @Inject constructor(
         uid: Int,
         grantedPerms: List<String>
     ): Long {
-        if (appOps == null || Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return 0L
-        var maxTs = 0L
-        for (perm in grantedPerms) {
-            val opStr = PERM_TO_OPS[perm] ?: continue
-            try {
-                val ops = appOps.getPackageOps(packageName, listOf(opStr))
-                for (pkgOp in ops) {
-                    for (op in pkgOp.ops) {
-                        val ts = op.getLastAccessTime(
-                            AppOpsManager.OP_FLAG_SELF or
-                                    AppOpsManager.OP_FLAG_TRUSTED_PROXY or
-                                    AppOpsManager.OP_FLAG_UNTRUSTED_PROXY
-                        )
-                        if (ts > maxTs) maxTs = ts
-                    }
-                }
-            } catch (_: Exception) { /* skip if ops not available */ }
-        }
-        return maxTs
+        return 0L
     }
 }

@@ -44,6 +44,8 @@ class AppMonitorService : Service() {
     private var packageScannerReceiver: PackageScannerReceiver? = null
 
     companion object {
+        const val ACTION_START_FROM_BOOT = "uz.sentinel.service.START_FROM_BOOT"
+        const val ACTION_START_FROM_WATCHDOG = "uz.sentinel.service.START_FROM_WATCHDOG"
         private const val NOTIFICATION_ID = 1001
         private const val POLL_INTERVAL_MS = 350L
 

@@ -61,34 +61,42 @@ fun PermissionAuditScreen(
                 }
             }
 
-            val filteredApps = when (selectedTab) {
-                1 -> uiState.apps.filter { it.grantedDangerousPerms.any { p -> p.contains("AUDIO") } }
-                2 -> uiState.apps.filter { it.grantedDangerousPerms.any { p -> p.contains("CAMERA") } }
-                3 -> uiState.apps.filter { it.grantedDangerousPerms.any { p -> p.contains("LOCATION") } }
-                4 -> uiState.apps.filter { it.grantedDangerousPerms.any { p -> p.contains("CONTACTS") } }
-                else -> uiState.apps
-            }
-
-            if (uiState.isLoading) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
+            when (val state = uiState) {
+                is PermissionAuditUiState.Loading -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
                 }
-            } else {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    items(filteredApps, key = { it.packageName }) { appInfo ->
-                        PermissionAppRow(appInfo) {
-                            try {
-                                val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                                    data = Uri.fromParts("package", appInfo.packageName, null)
-                                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                                }
-                                context.startActivity(intent)
-                            } catch (e: Exception) {}
+                is PermissionAuditUiState.Error -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text(text = state.message, color = MaterialTheme.colorScheme.error)
+                    }
+                }
+                is PermissionAuditUiState.Success -> {
+                    val filteredApps = when (selectedTab) {
+                        1 -> state.microphoneApps
+                        2 -> state.cameraApps
+                        3 -> state.locationApps
+                        4 -> state.contactsApps
+                        else -> state.all
+                    }
+
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        items(filteredApps, key = { it.packageName }) { appInfo ->
+                            PermissionAppRow(appInfo) {
+                                try {
+                                    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                        data = Uri.fromParts("package", appInfo.packageName, null)
+                                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                    }
+                                    context.startActivity(intent)
+                                } catch (_: Exception) {}
+                            }
                         }
                     }
                 }

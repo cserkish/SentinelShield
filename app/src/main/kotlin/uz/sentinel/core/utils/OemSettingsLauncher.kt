@@ -14,7 +14,7 @@ object OemSettingsLauncher {
         val intents = mutableListOf<Intent>()
 
         when (brand) {
-            BrandDetector.Brand.XIAOMI, BrandDetector.Brand.REDMI, BrandDetector.Brand.POCO -> {
+            BrandDetector.Brand.XIAOMI -> {
                 intents.add(Intent().setComponent(ComponentName("com.miui.securitycenter", "com.miui.permcenter.autostart.AutoStartManagementActivity")))
                 intents.add(Intent("miui.intent.action.OP_AUTO_START").addCategory(Intent.CATEGORY_DEFAULT))
             }
