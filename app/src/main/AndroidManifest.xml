@@ -47,7 +47,7 @@
     <uses-feature android:name="android.hardware.fingerprint" android:required="false" />
 
     <application
-        android:name=".SentinelApp"
+        android:name="uz.sentinel.SentinelApp"
         android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -60,7 +60,7 @@
 
         <!-- ───── Main Activity ───── -->
         <activity
-            android:name=".presentation.MainActivity"
+            android:name="uz.sentinel.presentation.MainActivity"
             android:exported="true"
             android:windowSoftInputMode="adjustResize"
             android:theme="@style/Theme.SentinelShield.Splash">
@@ -72,7 +72,7 @@
 
         <!-- ───── AppLock Monitor Service ───── -->
         <service
-            android:name=".service.AppMonitorService"
+            android:name="uz.sentinel.service.AppMonitorService"
             android:exported="false"
             android:foregroundServiceType="specialUse">
             <property
@@ -82,7 +82,7 @@
 
         <!-- ───── Local VPN Service (Anti-Phishing DNS) ───── -->
         <service
-            android:name=".service.PhishingVpnService"
+            android:name="uz.sentinel.service.PhishingVpnService"
             android:exported="false"
             android:permission="android.permission.BIND_VPN_SERVICE">
             <intent-filter>
@@ -92,7 +92,7 @@
 
         <!-- ───── Notification Listener (Safe Phishing Link Scanner) ───── -->
         <service
-            android:name=".service.SmsPhishingListenerService"
+            android:name="uz.sentinel.service.SmsPhishingListenerService"
             android:exported="true"
             android:label="@string/service_notification_listener"
             android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
@@ -103,7 +103,7 @@
 
         <!-- ───── Boot Receiver (restarts monitoring on device reboot) ───── -->
         <receiver
-            android:name=".service.BootReceiver"
+            android:name="uz.sentinel.service.BootReceiver"
             android:exported="true">
             <intent-filter android:priority="1000">
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
@@ -111,9 +111,20 @@
             </intent-filter>
         </receiver>
 
+        <!-- ───── Package Scanner Receiver (scans newly installed apps) ───── -->
+        <receiver
+            android:name="uz.sentinel.service.PackageScannerReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.PACKAGE_ADDED" />
+                <action android:name="android.intent.action.PACKAGE_REPLACED" />
+                <data android:scheme="package" />
+            </intent-filter>
+        </receiver>
+
         <!-- ───── Service Watchdog (JobScheduler) ───── -->
         <service
-            android:name=".service.ServiceWatchdog"
+            android:name="uz.sentinel.service.ServiceWatchdog"
             android:permission="android.permission.BIND_JOB_SERVICE"
             android:exported="false" />
 
