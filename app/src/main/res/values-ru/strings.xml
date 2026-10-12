@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SentinelShield</string>
+    <string name="app_tagline">Ваш цифровой защитник</string>
+    <string name="service_notification_listener">Защита сообщений SentinelShield</string>
+    <string name="ok">ОК</string>
+    <string name="cancel">Отмена</string>
+    <string name="save">Сохранить</string>
+    <string name="delete">Удалить</string>
+    <string name="enable">Включить</string>
+    <string name="disable">Выключить</string>
+    <string name="confirm">Подтвердить</string>
+    <string name="close">Закрыть</string>
+    <string name="next">Далее</string>
+    <string name="back">Назад</string>
+    <string name="settings">Настройки</string>
+    <string name="finish">Начать</string>
+
+    <string name="onboarding_welcome_title">Добро пожаловать в SentinelShield!</string>
+    <string name="onboarding_welcome_desc">Защитите ваше устройство от вредоносных APK, фишинга и несанкционированного доступа.</string>
+    <string name="dashboard_title">Панель управления</string>
+    <string name="dashboard_protected">Защищено</string>
+    <string name="dashboard_at_risk">Под угрозой</string>
+    <string name="antivirus_title">Антивирус</string>
+    <string name="cleaner_title">Очистка памяти</string>
+    <string name="applock_title">Блокировка приложений</string>
+    <string name="netguard_title">Сетевая защита NetGuard</string>
+    <string name="permissions_title">Аудит разрешений</string>
+    <string name="brand_stability_title">Стабильность и батарея</string>
+</resources>

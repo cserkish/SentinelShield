@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SentinelShield</string>
+    <string name="app_tagline">Your Security Guardian</string>
+    <string name="service_notification_listener">SentinelShield Message Shield</string>
+    <string name="ok">OK</string>
+    <string name="cancel">Cancel</string>
+    <string name="save">Save</string>
+    <string name="delete">Delete</string>
+    <string name="enable">Enable</string>
+    <string name="disable">Disable</string>
+    <string name="confirm">Confirm</string>
+    <string name="close">Close</string>
+    <string name="next">Next</string>
+    <string name="back">Back</string>
+    <string name="settings">Settings</string>
+    <string name="finish">Get Started</string>
+
+    <string name="onboarding_welcome_title">Welcome to SentinelShield!</string>
+    <string name="onboarding_welcome_desc">Shield your device from malware, phishing links, and unauthorized access.</string>
+    <string name="dashboard_title">Dashboard</string>
+    <string name="dashboard_protected">Protected</string>
+    <string name="dashboard_at_risk">At Risk</string>
+    <string name="antivirus_title">Antivirus</string>
+    <string name="cleaner_title">Storage Cleaner</string>
+    <string name="applock_title">App Lock</string>
+    <string name="netguard_title">NetGuard Shield</string>
+    <string name="permissions_title">Permission Auditor</string>
+    <string name="brand_stability_title">Device Stability</string>
+</resources>

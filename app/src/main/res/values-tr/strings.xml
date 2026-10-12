@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SentinelShield</string>
+    <string name="app_tagline">Güvenlik Muhafızınız</string>
+    <string name="service_notification_listener">SentinelShield Bildirim Koruması</string>
+    <string name="ok">Tamam</string>
+    <string name="cancel">İptal</string>
+    <string name="save">Kaydet</string>
+    <string name="delete">Sil</string>
+    <string name="enable">Etkinleştir</string>
+    <string name="disable">Devre Dışı</string>
+    <string name="confirm">Onayla</string>
+    <string name="close">Kapat</string>
+    <string name="next">İleri</string>
+    <string name="back">Geri</string>
+    <string name="settings">Ayarlar</string>
+    <string name="finish">Başla</string>
+
+    <string name="onboarding_welcome_title">SentinelShield\'e Hoş Geldiniz!</string>
+    <string name="onboarding_welcome_desc">Cihazınızı zararlı yazılımlardan, kimlik avından ve yetkisiz erişimden koruyun.</string>
+    <string name="dashboard_title">Kontrol Paneli</string>
+    <string name="dashboard_protected">Korumalı</string>
+    <string name="dashboard_at_risk">Risk Altında</string>
+    <string name="antivirus_title">Antivirüs</string>
+    <string name="cleaner_title">Bellek Temizleyici</string>
+    <string name="applock_title">Uygulama Kilidi</string>
+    <string name="netguard_title">NetGuard Ağ Koruması</string>
+    <string name="permissions_title">İzin Denetçisi</string>
+    <string name="brand_stability_title">Pil ve Kararlılık</string>
+</resources>

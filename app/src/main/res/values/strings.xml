@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- ==================== Asosiy ==================== -->
+    <string name="app_name">SentinelShield</string>
+    <string name="app_tagline">Xavfsizlik qo\'riqchingiz</string>
+    <string name="service_notification_listener">SentinelShield Xabarlar Himoyasi</string>
+    <string name="ok">OK</string>
+    <string name="cancel">Bekor qilish</string>
+    <string name="save">Saqlash</string>
+    <string name="delete">O\'chirish</string>
+    <string name="enable">Yoqish</string>
+    <string name="disable">O\'chirish</string>
+    <string name="confirm">Tasdiqlash</string>
+    <string name="close">Yopish</string>
+    <string name="retry">Qayta urinish</string>
+    <string name="continue_btn">Davom etish</string>
+    <string name="skip">O\'tkazib yuborish</string>
+    <string name="finish">Tugatish</string>
+    <string name="next">Keyingi</string>
+    <string name="back">Orqaga</string>
+    <string name="settings">Sozlamalar</string>
+    <string name="done">Tayyor</string>
+    <string name="grant">Ruxsat berish</string>
+    <string name="loading">Yuklanmoqda…</string>
+    <string name="unknown">Noma\'lum</string>
+    <string name="yes">Ha</string>
+    <string name="no">Yo\'q</string>
+
+    <!-- ==================== Onboarding ==================== -->
+    <string name="onboarding_welcome_title">SentinelShield\'ga xush kelibsiz!</string>
+    <string name="onboarding_welcome_desc">Telefoningizni viruslar, fishing va ruxsatsiz kirishdan himoya qiling.</string>
+    <string name="onboarding_antivirus_title">Antivirus himoyasi</string>
+    <string name="onboarding_antivirus_desc">Barcha o\'rnatilgan ilovalarni real vaqtda tekshirib, zararli dasturlarni aniqlaydi.</string>
+    <string name="onboarding_applock_title">Ilovalarni qulflash</string>
+    <string name="onboarding_applock_desc">PIN, grafik kalit yoki biometrik orqali maxfiy ilovalaringizni himoyalang.</string>
+    <string name="onboarding_netguard_title">Tarmoq himoyasi</string>
+    <string name="onboarding_netguard_desc">Fishing saytlarini bloklaydi va xavfli ulanishlardan ogoh qiladi.</string>
+    <string name="onboarding_permissions_title">Ruxsatlar</string>
+    <string name="onboarding_permissions_desc">Ilova to\'g\'ri ishlashi uchun quyidagi ruxsatlarni bering.</string>
+    <string name="onboarding_permissions_usage_stats">Foydalanish statistikasi</string>
+    <string name="onboarding_permissions_overlay">Ustma-ust ko\'rsatish</string>
+    <string name="onboarding_permissions_notifications">Bildirishnomalar</string>
+    <string name="onboarding_permissions_camera">Kamera (bosqinchi aniqlash uchun)</string>
+    <string name="onboarding_complete_title">Sozlash yakunlandi!</string>
+    <string name="onboarding_complete_desc">SentinelShield faol. Telefoningiz endi himoyalangan.</string>
+
+    <!-- ==================== Dashboard ==================== -->
+    <string name="dashboard_title">Boshqaruv paneli</string>
+    <string name="dashboard_protected">Himoyalangan</string>
+    <string name="dashboard_at_risk">Xavf ostida</string>
+    <string name="dashboard_last_scan">Oxirgi tekshiruv: %1$s</string>
+    <string name="dashboard_last_clean">Oxirgi tozalash: %1$s</string>
+    <string name="dashboard_quick_scan">Tezkor tekshiruv</string>
+    <string name="dashboard_full_scan">To\'liq tekshiruv</string>
+    <string name="dashboard_threats_found">%1$d ta tahdid topildi</string>
+    <string name="dashboard_no_threats">Tahdid topilmadi</string>
+    <string name="dashboard_security_score">Xavfsizlik bahosi</string>
+
+    <!-- ==================== Antivirus ==================== -->
+    <string name="antivirus_title">Antivirus</string>
+    <string name="antivirus_scan_start">Tekshiruv boshlandi…</string>
+    <string name="antivirus_scanning_app">Tekshirilmoqda: %1$s</string>
+    <string name="antivirus_scan_complete">Tekshiruv yakunlandi</string>
+    <string name="antivirus_threats_found">%1$d ta zararli ilova topildi</string>
+    <string name="antivirus_clean">Tizim toza</string>
+    <string name="antivirus_remove_threat">Tahdidni o\'chirish</string>
+    <string name="antivirus_threat_detail">Tahdid tafsiloti</string>
+    <string name="antivirus_malware_name">Zararli dastur nomi: %1$s</string>
+    <string name="antivirus_severity_high">Yuqori xavf</string>
+    <string name="antivirus_severity_medium">O\'rtacha xavf</string>
+    <string name="antivirus_severity_low">Past xavf</string>
+    <string name="antivirus_realtime_protection">Real vaqt himoyasi</string>
+    <string name="antivirus_db_updated">Virus bazasi yangilandi: %1$s</string>
+    <string name="antivirus_db_update_failed">Bazani yangilashda xatolik</string>
+    <string name="antivirus_apps_scanned">%1$d ta ilova tekshirildi</string>
+    <string name="antivirus_trust_app">Ilovaga ishonch bildirish</string>
+    <string name="antivirus_trusted">Ishonchli</string>
+
+    <!-- ==================== Cleaner ==================== -->
+    <string name="cleaner_title">Tizim tozalagich</string>
+    <string name="cleaner_analyzing">Tahlil qilinmoqda…</string>
+    <string name="cleaner_cache">Kesh fayllari</string>
+    <string name="cleaner_temp">Vaqtinchalik fayllar</string>
+    <string name="cleaner_junk">Keraksiz fayllar</string>
+    <string name="cleaner_total_found">%1$s bo\'shatish mumkin</string>
+    <string name="cleaner_clean_now">Hozir tozalash</string>
+    <string name="cleaner_cleaning">Tozalanmoqda…</string>
+    <string name="cleaner_done">Tozalash yakunlandi</string>
+    <string name="cleaner_freed">%1$s bo\'shatildi</string>
+    <string name="cleaner_nothing_to_clean">Tozalash kerak emas</string>
+
+    <!-- ==================== AppLock ==================== -->
+    <string name="applock_title">Ilovalarni qulflash</string>
+    <string name="applock_enter_pin">PIN kiriting</string>
+    <string name="applock_confirm_pin">PINni tasdiqlang</string>
+    <string name="applock_set_pin">PIN o\'rnatish</string>
+    <string name="applock_change_pin">PINni o\'zgartirish</string>
+    <string name="applock_wrong_pin">Noto\'g\'ri PIN</string>
+    <string name="applock_pin_mismatch">PINlar mos kelmadi</string>
+    <string name="applock_pin_set_success">PIN muvaffaqiyatli o\'rnatildi</string>
+    <string name="applock_locked">Qulflangan</string>
+    <string name="applock_unlock">Qulfdan chiqarish</string>
+    <string name="applock_biometric_prompt">Barmoq izingizni qo\'ying</string>
+    <string name="applock_biometric_failed">Biometrik autentifikatsiya muvaffaqiyatsiz</string>
+    <string name="applock_draw_pattern">Grafik kalit chizing</string>
+    <string name="applock_pattern_too_short">Grafik kalit juda qisqa (kamida 4 ta nuqta)</string>
+    <string name="applock_intrusion_detected">Ruxsatsiz kirish urinishi aniqlandi!</string>
+    <string name="applock_photo_taken">Bosqinchi rasmi olindi</string>
+    <string name="applock_lock_type_pin">PIN</string>
+    <string name="applock_lock_type_pattern">Grafik kalit</string>
+    <string name="applock_lock_type_biometric">Biometrik</string>
+    <string name="applock_require_after">Qayta bloklash vaqti: %1$d daqiqa</string>
+    <string name="applock_intruder_photos">Bosqinchi rasmlari</string>
+    <string name="applock_no_intruder_photos">Bosqinchi rasmlari yo\'q</string>
+    <string name="applock_locked_apps">Qulflangan ilovalar</string>
+    <string name="applock_no_locked_apps">Hech bir ilova qulflangan emas</string>
+    <string name="applock_select_apps">Ilovalarni tanlang</string>
+
+    <!-- ==================== NetGuard / VPN ==================== -->
+    <string name="netguard_title">Tarmoq himoyasi</string>
+    <string name="netguard_vpn_enable">VPN yoqish</string>
+    <string name="netguard_vpn_disable">VPN o\'chirish</string>
+    <string name="netguard_vpn_connected">VPN ulandi</string>
+    <string name="netguard_vpn_disconnected">VPN uzildi</string>
+    <string name="netguard_phishing_blocked">Fishing sayt bloklandi: %1$s</string>
+    <string name="netguard_domain_blocked">Domen bloklandi</string>
+    <string name="netguard_blocked_domains">Bloklangan domenlar</string>
+    <string name="netguard_safe_browsing">Xavfsiz ko\'rish</string>
+    <string name="netguard_threat_detected">Tarmoq tahdidi aniqlandi</string>
+    <string name="netguard_dns_protected">DNS himoyalangan</string>
+
+    <!-- ==================== Permissions Monitor ==================== -->
+    <string name="permissions_title">Ruxsatlar nazorati</string>
+    <string name="permissions_dangerous">Xavfli ruxsatlar</string>
+    <string name="permissions_overview">Ruxsatlar sharhi</string>
+    <string name="permissions_camera_access">Kamera ruxsati</string>
+    <string name="permissions_location_access">Joylashuv ruxsati</string>
+    <string name="permissions_microphone_access">Mikrofon ruxsati</string>
+    <string name="permissions_contacts_access">Kontaktlar ruxsati</string>
+    <string name="permissions_sms_access">SMS ruxsati</string>
+    <string name="permissions_storage_access">Xotira ruxsati</string>
+    <string name="permissions_apps_with_permission">Ushbu ruxsatga ega ilovalar: %1$d ta</string>
+    <string name="permissions_revoke_hint">Sozlamalarda ruxsatni bekor qilishingiz mumkin</string>
+    <string name="permissions_open_settings">Ilova sozlamalarini ochish</string>
+    <string name="permissions_score_safe">Xavfsiz</string>
+    <string name="permissions_score_warning">Ogoh bo\'ling</string>
+    <string name="permissions_score_danger">Xavfli</string>
+
+    <!-- ==================== Brand Stability ==================== -->
+    <string name="brand_stability_title">Qurilma sozlamalari</string>
+    <string name="brand_stability_desc">Ilovaning to\'g\'ri ishlashi uchun qurilmangizga xos sozlamalarni amalga oshiring.</string>
+    <string name="brand_stability_skip_warn">Bu sozlamalarni o\'tkazib yuborish ilovaning fon ishlashiga ta\'sir qilishi mumkin.</string>
+
+    <!-- ==================== Xato xabarlari ==================== -->
+    <string name="error_generic">Xatolik yuz berdi. Qayta urining.</string>
+    <string name="error_permission_denied">Ruxsat berilmadi</string>
+    <string name="error_no_internet">Internet ulanishi yo\'q</string>
+    <string name="error_scan_failed">Tekshiruv muvaffaqiyatsiz yakunlandi</string>
+    <string name="error_database">Ma\'lumotlar bazasi xatosi</string>
+    <string name="error_camera_unavailable">Kamera mavjud emas</string>
+    <string name="error_biometric_unavailable">Biometrik autentifikatsiya mavjud emas</string>
+    <string name="error_vpn_failed">VPN ulanishida xatolik</string>
+    <string name="error_invalid_pin">Noto\'g\'ri PIN format (4–8 raqam)</string>
+    <string name="error_storage_full">Xotira to\'lgan</string>
+    <string name="error_app_not_found">Ilova topilmadi</string>
+
+    <!-- ==================== Bildirishnomalar ==================== -->
+    <string name="notif_channel_security">Xavfsizlik ogohlantirishlari</string>
+    <string name="notif_channel_scan">Tekshiruv holati</string>
+    <string name="notif_channel_applock">Ilova qulfi</string>
+    <string name="notif_channel_vpn">VPN holati</string>
+    <string name="notif_threat_title">Tahdid aniqlandi!</string>
+    <string name="notif_threat_body">%1$s ilovasida zararli dastur topildi</string>
+    <string name="notif_scan_running">Tekshiruv jarayonda…</string>
+    <string name="notif_scan_done">Tekshiruv yakunlandi</string>
+    <string name="notif_applock_title">Ilova qulflangan</string>
+    <string name="notif_applock_body">%1$s ilovasi SentinelShield tomonidan qulflangan</string>
+    <string name="notif_intruder_title">Ruxsatsiz kirish!</string>
+    <string name="notif_intruder_body">Kimdir %1$s ilovani ochmoqchi bo\'ldi</string>
+    <string name="notif_vpn_active">VPN faol — Siz himoyalangansiz</string>
+    <string name="notif_phishing_title">Fishing sayt!</string>
+    <string name="notif_phishing_body">Xavfli domen bloklandi: %1$s</string>
+    <string name="notif_watchdog_running">SentinelShield himoya qilmoqda</string>
+
+    <!-- ==================== Ruxsat so'rov ==================== -->
+    <string name="perm_usage_stats_rationale">Ilovalar foydalanishini kuzatish va AppLock ishlashi uchun foydalanish statistikasiga ruxsat kerak.</string>
+    <string name="perm_overlay_rationale">Qulflangan ilovalar ustida himoya ekranini ko\'rsatish uchun ustma-ust ko\'rsatish ruxsati kerak.</string>
+    <string name="perm_camera_rationale">Ruxsatsiz kirish urinishlarida bosqinchi rasmini olish uchun kamera ruxsati kerak.</string>
+    <string name="perm_notification_rationale">Xavfsizlik ogohlantirishlari va tekshiruv natijalari uchun bildirishnoma ruxsati kerak.</string>
+
+    <!-- ==================== Haqida ==================== -->
+    <string name="about_title">Ilova haqida</string>
+    <string name="about_version">Versiya: %1$s</string>
+    <string name="about_developer">Ishlab chiqaruvchi: SentinelShield Team</string>
+    <string name="about_privacy_policy">Maxfiylik siyosati</string>
+    <string name="about_terms">Foydalanish shartlari</string>
+</resources>
