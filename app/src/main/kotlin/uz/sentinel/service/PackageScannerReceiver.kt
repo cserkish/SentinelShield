@@ -28,10 +28,17 @@ class PackageScannerReceiver : BroadcastReceiver() {
 
             if (packageName == context.packageName) return // Ignore self
 
+            val pendingResult = goAsync()
             CoroutineScope(Dispatchers.IO).launch {
-                val result = scanUseCase.execute(packageName)
-                if (result.dangerLevel == DangerLevel.HIGH || result.isKnownMalware) {
-                    showMalwareAlertNotification(context, result.appName, result.dangerScore)
+                try {
+                    val result = scanUseCase.execute(packageName)
+                    if (result.dangerLevel == DangerLevel.HIGH || result.isKnownMalware) {
+                        showMalwareAlertNotification(context, result.appName, result.dangerScore)
+                    }
+                } catch (e: Exception) {
+                    // Sokin ushlash
+                } finally {
+                    pendingResult.finish()
                 }
             }
         }
