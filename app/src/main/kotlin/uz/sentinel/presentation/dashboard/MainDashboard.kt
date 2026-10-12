@@ -42,7 +42,7 @@ fun MainDashboard(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Image(
-                            painter = painterResource(id = uz.sentinel.R.drawable.sentinel_logo),
+                            painter = painterResource(id = uz.sentinel.sentinelshield.R.drawable.sentinel_logo),
                             contentDescription = "SentinelShield Logo",
                             modifier = Modifier
                                 .size(32.dp)
@@ -89,7 +89,7 @@ fun MainDashboard(
                     ) {
                         if (uiState.isDeviceSafe) {
                             Image(
-                                painter = painterResource(id = uz.sentinel.R.drawable.sentinel_logo),
+                                painter = painterResource(id = uz.sentinel.sentinelshield.R.drawable.sentinel_logo),
                                 contentDescription = "Himoyalangan",
                                 modifier = Modifier
                                     .padding(6.dp)
