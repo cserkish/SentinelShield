@@ -23,12 +23,16 @@ import uz.sentinel.presentation.permissionaudit.PermissionAuditScreen
 import uz.sentinel.presentation.permissionaudit.PermissionAuditViewModel
 import uz.sentinel.presentation.settings.StabilityGuideScreen
 
+import uz.sentinel.presentation.applock.IntruderPhotosScreen
+import uz.sentinel.presentation.applock.IntruderPhotosViewModel
+
 sealed class Screen(val route: String) {
     object Onboarding : Screen("onboarding")
     object Dashboard : Screen("dashboard")
     object Antivirus : Screen("antivirus")
     object Cleaner : Screen("cleaner")
     object AppLock : Screen("applock")
+    object IntruderPhotos : Screen("intruder_photos")
     object NetGuard : Screen("netguard")
     object PermissionAudit : Screen("permission_audit")
     object StabilityGuide : Screen("stability_guide")
@@ -93,6 +97,15 @@ fun AppNavigation(
             AppLockListScreen(
                 lockedAppDao = lockedAppDao,
                 preferences = preferences,
+                onNavigateToIntruderPhotos = { navController.navigate(Screen.IntruderPhotos.route) },
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Screen.IntruderPhotos.route) {
+            val viewModel: IntruderPhotosViewModel = hiltViewModel()
+            IntruderPhotosScreen(
+                viewModel = viewModel,
                 onNavigateBack = { navController.popBackStack() }
             )
         }

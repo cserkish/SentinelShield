@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
@@ -50,6 +51,7 @@ data class AppLockItem(
 fun AppLockListScreen(
     lockedAppDao: LockedAppDao,
     preferences: SentinelPreferences,
+    onNavigateToIntruderPhotos: () -> Unit = {},
     onNavigateBack: () -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -106,6 +108,11 @@ fun AppLockListScreen(
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Orqaga")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = onNavigateToIntruderPhotos) {
+                        Icon(Icons.Default.CameraAlt, contentDescription = "Suratlar")
                     }
                 }
             )
