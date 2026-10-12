@@ -16,6 +16,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.foundation.Image
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -36,7 +39,19 @@ fun MainDashboard(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("SentinelShield", fontWeight = FontWeight.Bold) },
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Image(
+                            painter = painterResource(id = uz.sentinel.R.drawable.sentinel_logo),
+                            contentDescription = "SentinelShield Logo",
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text("SentinelShield", fontWeight = FontWeight.Bold)
+                    }
+                },
                 actions = {
                     IconButton(onClick = onNavigateToStability) {
                         Icon(Icons.Default.BatterySaver, contentDescription = "Batareya sozlamasi")
@@ -70,16 +85,27 @@ fun MainDashboard(
                     Surface(
                         shape = CircleShape,
                         color = shieldColor.copy(alpha = 0.2f),
-                        modifier = Modifier.size(80.dp)
+                        modifier = Modifier.size(84.dp)
                     ) {
-                        Icon(
-                            imageVector = if (uiState.isDeviceSafe) Icons.Default.Shield else Icons.Default.GppBad,
-                            contentDescription = null,
-                            tint = shieldColor,
-                            modifier = Modifier
-                                .padding(18.dp)
-                                .fillMaxSize()
-                        )
+                        if (uiState.isDeviceSafe) {
+                            Image(
+                                painter = painterResource(id = uz.sentinel.R.drawable.sentinel_logo),
+                                contentDescription = "Himoyalangan",
+                                modifier = Modifier
+                                    .padding(6.dp)
+                                    .fillMaxSize()
+                                    .clip(CircleShape)
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.GppBad,
+                                contentDescription = null,
+                                tint = shieldColor,
+                                modifier = Modifier
+                                    .padding(18.dp)
+                                    .fillMaxSize()
+                            )
+                        }
                     }
                     Spacer(modifier = Modifier.height(14.dp))
                     Text(
