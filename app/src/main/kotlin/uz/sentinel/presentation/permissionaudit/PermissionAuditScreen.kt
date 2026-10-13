@@ -19,6 +19,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import uz.sentinel.domain.model.AppPermissionInfo
 import uz.sentinel.presentation.components.GlassCard
 import uz.sentinel.presentation.theme.*
@@ -61,10 +62,12 @@ fun PermissionAuditScreen(
                 containerColor = MaterialTheme.colorScheme.background,
                 contentColor = CyberTeal,
                 indicator = { tabPositions ->
-                    TabRowDefaults.SecondaryIndicator(
-                        Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
-                        color = CyberTeal
-                    )
+                    if (selectedTab < tabPositions.size) {
+                        TabRowDefaults.SecondaryIndicator(
+                            Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
+                            color = CyberTeal
+                        )
+                    }
                 }
             ) {
                 tabs.forEachIndexed { index, title ->
