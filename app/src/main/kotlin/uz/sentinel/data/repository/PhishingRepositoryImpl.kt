@@ -42,17 +42,34 @@ class PhishingRepositoryImpl @Inject constructor(
         "garantbank.uz", "hayotbank.uz", "apexbank.uz", "poytaxtbank.uz", "yangibank.uz",
         "madadinvestbank.uz", "asiaalliancebank.uz", "ravnaqbank.uz", "aab.uz", "saderatbank.uz",
 
-        // Ishonchli global infratuzilma servislari (soxta signal bermaslik uchun)
+        // Ishonchli global infratuzilma va ommabop platformalar (Samsung, Telegram, Meta, Google)
         "google.com", "googleapis.com", "gstatic.com", "googleusercontent.com", "firebaseio.com",
         "apple.com", "icloud.com", "cloudflare.com", "one.one.one.one",
         "telegram.org", "t.me", "yandex.uz", "yandex.ru", "ya.ru",
+        "samsung.com", "secb2b.com", "samsungqbe.com",
+        "instagram.com", "whatsapp.com", "facebook.com", "fbcdn.net",
+        "youtube.com", "googlevideo.com", "tiktok.com", "byteoversea.com",
+        "twitter.com", "x.com", "github.com", "microsoft.com",
         "clickup.com", "clickhouse.com", "doubleclick.net", "clickfunnels.com",
         "clickbank.com", "humblebundle.com", "humor.com"
+    )
+
+    // Yashirin kripto-maynerlar va mining pullar (Monero, XMRig, CoinHive tarmoqlari)
+    private val knownMiningDomains = setOf(
+        "supportxmr.com", "minexmr.com", "nanopool.org", "ethermine.org",
+        "f2pool.com", "antpool.com", "coinhive.com", "crypto-loot.com",
+        "xmrig.com", "monerocean.stream", "xmrpool.eu", "hashvault.pro"
     )
 
     private fun isOfficialTrustedDomain(domain: String): Boolean {
         return officialWhitelistedDomains.any { official ->
             domain == official || domain.endsWith(".$official")
+        }
+    }
+
+    private fun isKnownMiningDomain(domain: String): Boolean {
+        return knownMiningDomains.any { miner ->
+            domain == miner || domain.endsWith(".$miner")
         }
     }
 
@@ -68,12 +85,17 @@ class PhishingRepositoryImpl @Inject constructor(
 
         if (cleanDomain.isBlank() || !cleanDomain.contains(".")) return false
 
-        // 1. QAT'IY OQ RO'YXAT (Rasmiy Payme, Paycom, Click va banklarning o'zi va subdomenlari doimo XAVFSIZ)
+        // 1. QAT'IY OQ RO'YXAT (Rasmiy Fintex, banklar, platformalar va subdomenlari doimo XAVFSIZ)
         if (isOfficialTrustedDomain(cleanDomain)) {
             return false // Original rasmiy servis! Hech qanday soxta ogohlantirish berilmaydi.
         }
 
-        // 2. Lokal ma'lumotlar bazasidagi qora ro'yxat (Blocklist DB)
+        // 2. Kripto-maynerlar va mining pullar
+        if (isKnownMiningDomain(cleanDomain)) {
+            return true
+        }
+
+        // 3. Lokal ma'lumotlar bazasidagi qora ro'yxat (Blocklist DB)
         if (dao.findDomain(cleanDomain) != null) return true
         if (dao.matchSubdomain(cleanDomain) != null) return true
 

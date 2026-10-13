@@ -38,9 +38,41 @@ class HeuristicEngine @Inject constructor() {
         "ru.vk.store"                           // RuStore
     )
 
+    private val officialPopularApps = setOf(
+        "org.telegram.messenger",
+        "org.thunderdog.challegram",
+        "com.instagram.android",
+        "com.whatsapp",
+        "com.whatsapp.w4b",
+        "com.google.android.youtube",
+        "com.google.android.apps.youtube.music",
+        "com.google.android.gm",
+        "com.google.android.apps.maps",
+        "com.google.android.apps.photos",
+        "com.facebook.katana",
+        "com.facebook.orca",
+        "com.zhiliaoapp.musically",
+        "com.ss.android.ugc.trill",
+        "com.snapchat.android",
+        "com.twitter.android",
+        "com.spotify.music",
+        "com.netflix.mediaclient",
+        "com.vkontakte.android",
+        "ru.ok.android",
+        "com.viber.voip",
+        "com.imo.android.imoim",
+        "com.pinterest",
+        "com.linkedin.android",
+        "com.android.chrome"
+    )
+
     fun isTrustedOemPackage(packageName: String): Boolean {
         val pkg = packageName.lowercase()
         return trustedOemPrefixes.any { pkg.startsWith(it) }
+    }
+
+    fun isOfficialPopularApp(packageName: String): Boolean {
+        return officialPopularApps.contains(packageName.lowercase())
     }
 
     fun isSystemOrOemApp(packageInfo: PackageInfo): Boolean {
@@ -54,7 +86,7 @@ class HeuristicEngine @Inject constructor() {
     }
 
     fun analyze(packageInfo: PackageInfo, packageManager: PackageManager): HeuristicResult {
-        // Tizim va rasmiy OEM ilovalari uchun avtomatik 0 ball va XAVFSIZ (False Positive oldini olish)
+        // 1. Tizim va rasmiy OEM ilovalari uchun 0 ball va XAVFSIZ
         if (isSystemOrOemApp(packageInfo)) {
             return HeuristicResult(
                 dangerScore = 0,
@@ -65,16 +97,41 @@ class HeuristicEngine @Inject constructor() {
             )
         }
 
+        // 2. Rasmiy ommabop ilovalar (Telegram, Instagram, WhatsApp, YouTube va b.) uchun 0 ball
+        if (isOfficialPopularApp(packageInfo.packageName)) {
+            return HeuristicResult(
+                dangerScore = 0,
+                dangerLevel = DangerLevel.SAFE,
+                flaggedPermissions = emptyList(),
+                isOfficialStore = true,
+                isSystemApp = false
+            )
+        }
+
         val permissions = packageInfo.requestedPermissions?.toList() ?: emptyList()
         var score = 0
         val flaggedPermissions = mutableListOf<String>()
 
-        // Foydalanuvchi o'rnatgan ilovalar uchun xavfli ruxsatlar kombinatsiyasini tahlil qilish
+        // 3. Soxta tizim ilovalari va kripto-maynerlarni aniqlash (1-bosqich)
+        val pkg = packageInfo.packageName.lowercase()
+        val appName = packageInfo.applicationInfo?.loadLabel(packageManager)?.toString()?.lowercase() ?: ""
+        val hasOverlay = permissions.contains("android.permission.SYSTEM_ALERT_WINDOW")
+        val hasInternet = permissions.contains("android.permission.INTERNET")
         val hasSms = permissions.contains("android.permission.SEND_SMS") ||
                 permissions.contains("android.permission.RECEIVE_SMS") ||
                 permissions.contains("android.permission.READ_SMS")
-        val hasOverlay = permissions.contains("android.permission.SYSTEM_ALERT_WINDOW")
-        val hasInternet = permissions.contains("android.permission.INTERNET")
+
+        val isFakeSystemApp = pkg.contains("com.android.system.service") ||
+                pkg.contains("google.play.services.update") ||
+                appName.contains("google play services update") ||
+                (appName == "flashlight" && (hasOverlay || hasSms)) ||
+                (appName.contains("super cleaner") && hasOverlay)
+
+        if (isFakeSystemApp) {
+            score = 100
+            flaggedPermissions.add("🚨 Soxta tizim ilovasi / Troyan niqobi")
+        }
+        // Foydalanuvchi o'rnatgan ilovalar uchun xavfli ruxsatlar kombinatsiyasini tahlil qilish
 
         if (hasSms) {
             score += 25

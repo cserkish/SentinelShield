@@ -35,7 +35,8 @@ fun MainDashboard(
     onNavigateToAppLock: () -> Unit,
     onNavigateToNetGuard: () -> Unit,
     onNavigateToPermissions: () -> Unit,
-    onNavigateToStability: () -> Unit
+    onNavigateToStability: () -> Unit,
+    onNavigateToAppUninstall: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -260,6 +261,60 @@ fun MainDashboard(
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             "Kamera, mikrofon va kontaktlar monitoringi",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Icon(
+                        Icons.Default.ChevronRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // 5. Ilovalarni O'chirish va Debloat (Full-width Glass Card)
+            GlassCard(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onNavigateToAppUninstall() },
+                shape = RoundedCornerShape(20.dp),
+                backgroundColor = ObsidianSurface,
+                borderColor = NeonAmber.copy(alpha = 0.25f),
+                borderWidth = 1.dp
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = NeonAmber.copy(alpha = 0.15f),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, NeonAmber.copy(alpha = 0.3f)),
+                        modifier = Modifier.size(44.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Default.DeleteSweep,
+                                contentDescription = null,
+                                tint = NeonAmber,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.width(14.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            "Ilovalarni O'chirish (Debloat)",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            "Keraksiz ilovalar va zavod bloatware tozalash",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

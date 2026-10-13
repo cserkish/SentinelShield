@@ -54,8 +54,9 @@ class ScanUseCase @Inject constructor(
             )
         }
 
-        // Tizim va ishonchli OEM (Samsung, Google, Xiaomi va h.k.) ilovalari doimo XAVFSIZ (0 ball)
-        if (isSystem) {
+        // Tizim va rasmiy ommabop ilovalar (Telegram, Instagram, YouTube va b.) doimo XAVFSIZ (0 ball)
+        val isOfficialPopular = heuristicEngine.isOfficialPopularApp(packageName)
+        if (isSystem || isOfficialPopular) {
             return@withContext ScanResult(
                 packageName = packageName,
                 appName = appName,
@@ -63,7 +64,7 @@ class ScanUseCase @Inject constructor(
                 dangerLevel = DangerLevel.SAFE,
                 detectedPermissions = emptyList(),
                 isKnownMalware = false,
-                isSystemApp = true
+                isSystemApp = isSystem
             )
         }
 

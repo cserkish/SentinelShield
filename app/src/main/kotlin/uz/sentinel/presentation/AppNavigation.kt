@@ -25,6 +25,10 @@ import uz.sentinel.presentation.settings.StabilityGuideScreen
 
 import uz.sentinel.presentation.applock.IntruderPhotosScreen
 import uz.sentinel.presentation.applock.IntruderPhotosViewModel
+import uz.sentinel.presentation.appmanager.AppUninstallScreen
+import uz.sentinel.presentation.appmanager.AppUninstallViewModel
+import uz.sentinel.presentation.cleaner.StorageMigrationScreen
+import uz.sentinel.presentation.cleaner.StorageMigrationViewModel
 
 sealed class Screen(val route: String) {
     object Onboarding : Screen("onboarding")
@@ -36,6 +40,8 @@ sealed class Screen(val route: String) {
     object NetGuard : Screen("netguard")
     object PermissionAudit : Screen("permission_audit")
     object StabilityGuide : Screen("stability_guide")
+    object AppUninstall : Screen("app_uninstall")
+    object StorageMigration : Screen("storage_migration")
 }
 
 @Composable
@@ -73,7 +79,8 @@ fun AppNavigation(
                 onNavigateToAppLock = { navController.navigate(Screen.AppLock.route) },
                 onNavigateToNetGuard = { navController.navigate(Screen.NetGuard.route) },
                 onNavigateToPermissions = { navController.navigate(Screen.PermissionAudit.route) },
-                onNavigateToStability = { navController.navigate(Screen.StabilityGuide.route) }
+                onNavigateToStability = { navController.navigate(Screen.StabilityGuide.route) },
+                onNavigateToAppUninstall = { navController.navigate(Screen.AppUninstall.route) }
             )
         }
 
@@ -89,6 +96,7 @@ fun AppNavigation(
             val viewModel: CleanerViewModel = hiltViewModel()
             CleanerScreen(
                 viewModel = viewModel,
+                onNavigateToStorageMigration = { navController.navigate(Screen.StorageMigration.route) },
                 onNavigateBack = { navController.popBackStack() }
             )
         }
@@ -128,6 +136,22 @@ fun AppNavigation(
 
         composable(Screen.StabilityGuide.route) {
             StabilityGuideScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Screen.AppUninstall.route) {
+            val viewModel: AppUninstallViewModel = hiltViewModel()
+            AppUninstallScreen(
+                viewModel = viewModel,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Screen.StorageMigration.route) {
+            val viewModel: StorageMigrationViewModel = hiltViewModel()
+            StorageMigrationScreen(
+                viewModel = viewModel,
                 onNavigateBack = { navController.popBackStack() }
             )
         }

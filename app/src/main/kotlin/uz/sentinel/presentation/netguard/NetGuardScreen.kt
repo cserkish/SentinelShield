@@ -146,7 +146,7 @@ fun NetGuardScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Banklar va Payme Oq Ro'yxati Axborot Kartasi
+            // Moliyaviy va Bank Ilovalari Himoyasi Kartasi
             GlassCard(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
@@ -167,13 +167,13 @@ fun NetGuardScreen(
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
                         Text(
-                            text = "Ultra Whitelist Faol",
+                            text = "Moliyaviy va Bank Ilovalari Himoyasi",
                             fontWeight = FontWeight.Bold,
                             fontSize = 13.sp,
                             color = CyberTeal
                         )
                         Text(
-                            text = "Payme, Click, Uzcard, Humo va barcha rasmiy banklar oq ro'yxatda. Soxta klonlar esa qat'iy tutiladi.",
+                            text = "Rasmiy fintex ekotizimi to'liq himoyalangan. Soxta fishing va mayner tarmoqlari bloklanadi.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

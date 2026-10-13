@@ -28,6 +28,7 @@ import uz.sentinel.presentation.theme.*
 @Composable
 fun CleanerScreen(
     viewModel: CleanerViewModel,
+    onNavigateToStorageMigration: () -> Unit = {},
     onNavigateBack: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -153,7 +154,61 @@ fun CleanerScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(18.dp))
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Katta fayllarni ko'chirish (Qo'shimcha xotira / Fleshka)
+            GlassCard(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onNavigateToStorageMigration() },
+                shape = RoundedCornerShape(16.dp),
+                backgroundColor = ObsidianSurfaceElev,
+                borderColor = GlassBorderTeal,
+                borderWidth = 1.dp
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = NeonAmber.copy(alpha = 0.15f),
+                        modifier = Modifier.size(38.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Default.SdStorage,
+                                contentDescription = null,
+                                tint = NeonAmber,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Katta fayllarni ko'chirish (Fleshka / Qo'shimcha)",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "50 MB dan katta video va arxivlarni xavfsiz ko'chiring",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 11.sp
+                        )
+                    }
+                    Icon(
+                        imageVector = Icons.Default.ChevronRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
 
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
