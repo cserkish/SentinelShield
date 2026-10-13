@@ -26,6 +26,9 @@ import uz.sentinel.data.local.prefs.SentinelPreferences
 import uz.sentinel.presentation.theme.SentinelShieldTheme
 import javax.inject.Inject
 
+import androidx.compose.foundation.background
+import androidx.compose.runtime.collectAsState
+
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
@@ -49,23 +52,26 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         try {
-            // Read onboarding completed flag safely with timeout; defaults immediately to false on cold start
-            val isCompleted = runCatching {
-                runBlocking(Dispatchers.IO) {
-                    withTimeoutOrNull(200L) {
-                        preferences.isOnboardingCompleted.first()
-                    }
-                }
-            }.getOrNull() ?: false
-
             setContent {
                 SentinelShieldTheme {
-                    val startDest = if (isCompleted) Screen.Dashboard.route else Screen.Onboarding.route
-                    AppNavigation(
-                        startDestination = startDest,
-                        preferences = preferences,
-                        lockedAppDao = lockedAppDao
-                    )
+                    val onboardingState = preferences.isOnboardingCompleted.collectAsState(initial = null)
+                    val completed = onboardingState.value
+
+                    if (completed == null) {
+                        // Instant non-blocking frame draw with brand dark background
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color(0xFF0D1B2A))
+                        )
+                    } else {
+                        val startDest = if (completed) Screen.Dashboard.route else Screen.Onboarding.route
+                        AppNavigation(
+                            startDestination = startDest,
+                            preferences = preferences,
+                            lockedAppDao = lockedAppDao
+                        )
+                    }
                 }
 
                 // Request notification permission safely AFTER UI is mounted
@@ -91,7 +97,9 @@ class MainActivity : ComponentActivity() {
             setContent {
                 SentinelShieldTheme {
                     Box(
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color(0xFF0D1B2A)),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(

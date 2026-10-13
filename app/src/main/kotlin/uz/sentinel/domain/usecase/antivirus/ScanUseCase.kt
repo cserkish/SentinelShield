@@ -36,11 +36,17 @@ class ScanUseCase @Inject constructor(
             )
         }
 
-        val appName = packageInfo.applicationInfo?.loadLabel(packageManager)?.toString() ?: packageName
-        val apkPath = packageInfo.applicationInfo?.sourceDir
+        val appInfo = packageInfo.applicationInfo
+        val appName = appInfo?.loadLabel(packageManager)?.toString() ?: packageName
+        val apkPath = appInfo?.sourceDir
+        val isSystemApp = (appInfo?.flags ?: 0) and android.content.pm.ApplicationInfo.FLAG_SYSTEM != 0
 
-        // 1. Calculate SHA-256 of APK
-        val apkHash = apkPath?.let { calculateSha256(it) } ?: ""
+        // 1. Calculate SHA-256 of user-installed APK (skip read-only system apps to preserve CPU/battery on budget devices)
+        val apkHash = if (!isSystemApp && apkPath != null) {
+            calculateSha256(apkPath)
+        } else {
+            ""
+        }
 
         // 2. Check against offline malware signature database
         val knownMalwareName = if (apkHash.isNotEmpty()) {

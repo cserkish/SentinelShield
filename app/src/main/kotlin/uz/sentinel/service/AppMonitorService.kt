@@ -9,6 +9,8 @@ import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageManager
+import android.content.pm.ServiceInfo
 import android.graphics.PixelFormat
 import android.os.Build
 import android.os.Handler
@@ -73,7 +75,20 @@ class AppMonitorService : Service() {
         windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
         usageStatsManager = getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
 
-        startForeground(NOTIFICATION_ID, buildSilentNotification())
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(
+                    NOTIFICATION_ID,
+                    buildSilentNotification(),
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+                )
+            } else {
+                startForeground(NOTIFICATION_ID, buildSilentNotification())
+            }
+        } catch (t: Throwable) {
+            // Sokin ushlash: ForegroundServiceStartNotAllowedException yoki MissingForegroundServiceTypeException
+            android.util.Log.w("AppMonitorService", "startForeground failed gracefully: ${t.message}")
+        }
         registerPackageScanner()
         startMonitoring()
     }

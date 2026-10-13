@@ -20,13 +20,12 @@ class BootReceiver : BroadcastReceiver() {
         val action = intent.action ?: return
         Log.d(TAG, "onReceive: action=$action")
 
+        // Only react to actual boot completion; avoid background FGS crash on MY_PACKAGE_REPLACED (Android 12+)
         when (action) {
             Intent.ACTION_BOOT_COMPLETED,
-            Intent.ACTION_MY_PACKAGE_REPLACED,
-            "android.intent.action.QUICKBOOT_POWERON",      // HTC / bazı Xiaomi qurilmalar
-            "com.htc.intent.action.QUICKBOOT_POWERON" -> {  // HTC
+            "android.intent.action.QUICKBOOT_POWERON",
+            "com.htc.intent.action.QUICKBOOT_POWERON" -> {
                 startAppMonitorService(context)
-                startPhishingVpnService(context)
             }
         }
     }
@@ -43,25 +42,10 @@ class BootReceiver : BroadcastReceiver() {
             } else {
                 context.startService(serviceIntent)
             }
-            Log.d(TAG, "AppMonitorService started")
-        } catch (e: Exception) {
-            Log.e(TAG, "AppMonitorService start failed", e)
-        }
-    }
-
-    private fun startPhishingVpnService(context: Context) {
-        try {
-            val serviceIntent = Intent(context, PhishingVpnService::class.java).apply {
-                action = PhishingVpnService.ACTION_START_FROM_BOOT
-            }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(serviceIntent)
-            } else {
-                context.startService(serviceIntent)
-            }
-            Log.d(TAG, "PhishingVpnService started")
-        } catch (e: Exception) {
-            Log.e(TAG, "PhishingVpnService start failed", e)
+            Log.d(TAG, "AppMonitorService started safely")
+        } catch (t: Throwable) {
+            // Catches ForegroundServiceStartNotAllowedException on Android 12+ and OEM restrictions
+            Log.w(TAG, "AppMonitorService boot start deferred or disallowed by OS: ${t.message}")
         }
     }
 }

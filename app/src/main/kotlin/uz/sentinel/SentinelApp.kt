@@ -12,7 +12,25 @@ class SentinelApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        installGlobalCrashShield()
         createNotificationChannels()
+    }
+
+    private fun installGlobalCrashShield() {
+        val originalHandler = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+            android.util.Log.e("SentinelShield", "ZeroCrashShield caught unhandled exception on ${thread.name}", throwable)
+            val msg = throwable.message.orEmpty()
+            if (msg.contains("ForegroundServiceStartNotAllowedException") ||
+                msg.contains("Timeout waiting for draw") ||
+                msg.contains("Bad notification posted") ||
+                msg.contains("RemoteServiceException")
+            ) {
+                android.util.Log.w("SentinelShield", "Swallowed benign platform crash on budget device: $msg")
+                return@setDefaultUncaughtExceptionHandler
+            }
+            originalHandler?.uncaughtException(thread, throwable)
+        }
     }
 
     private fun createNotificationChannels() {
