@@ -21,6 +21,8 @@ data class LockScreenUiState(
     val pinDigits: List<Int> = emptyList(),
     val patternDots: List<Int> = emptyList(),
     val wrongAttempts: Int = 0,
+    val totalFailedAttempts: Int = 0,
+    val lockoutRemainingSeconds: Int = 0,
     val isUnlocked: Boolean = false,
     val errorMessage: String? = null,
     val isLoading: Boolean = false,
@@ -39,6 +41,7 @@ class LockScreenViewModel @Inject constructor(
     val uiState: StateFlow<LockScreenUiState> = _uiState.asStateFlow()
 
     private var targetPackage: String = ""
+    private var lockoutJob: kotlinx.coroutines.Job? = null
 
     fun init(packageName: String) {
         targetPackage = packageName
@@ -52,6 +55,7 @@ class LockScreenViewModel @Inject constructor(
     }
 
     fun onPinDigitAdded(digit: Int) {
+        if (_uiState.value.lockoutRemainingSeconds > 0) return
         val current = _uiState.value.pinDigits
         if (current.size >= 6) return
         val updated = current + digit
@@ -62,12 +66,14 @@ class LockScreenViewModel @Inject constructor(
     }
 
     fun onPinDigitRemoved() {
+        if (_uiState.value.lockoutRemainingSeconds > 0) return
         val current = _uiState.value.pinDigits
         if (current.isEmpty()) return
         _uiState.update { it.copy(pinDigits = current.dropLast(1), errorMessage = null) }
     }
 
     fun verifyPin(enteredPin: String) {
+        if (_uiState.value.lockoutRemainingSeconds > 0) return
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             val isCorrect = appLockRepository.verifyPin(targetPackage, enteredPin)
@@ -80,6 +86,7 @@ class LockScreenViewModel @Inject constructor(
     }
 
     fun verifyPattern(patternDots: List<Int>) {
+        if (_uiState.value.lockoutRemainingSeconds > 0) return
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             val isCorrect = appLockRepository.verifyPattern(targetPackage, patternDots)
@@ -92,6 +99,7 @@ class LockScreenViewModel @Inject constructor(
     }
 
     fun launchBiometric(activity: FragmentActivity) {
+        if (_uiState.value.lockoutRemainingSeconds > 0) return
         val executor = ContextCompat.getMainExecutor(activity)
         val biometricPrompt = BiometricPrompt(activity, executor,
             object : BiometricPrompt.AuthenticationCallback() {
@@ -124,39 +132,78 @@ class LockScreenViewModel @Inject constructor(
     }
 
     private fun onWrongAttempt() {
-        val attempts = _uiState.value.wrongAttempts + 1
-        _uiState.update {
-            it.copy(
-                wrongAttempts = attempts,
-                isLoading = false,
-                pinDigits = emptyList(),
-                patternDots = emptyList(),
-                errorMessage = if (attempts < 3) "Noto'g'ri! Qoldi: ${3 - attempts}" else null
-            )
+        val totalAttempts = _uiState.value.totalFailedAttempts + 1
+        val lockoutSeconds = when {
+            totalAttempts >= 5 -> 300 // 5 daqiqa
+            totalAttempts == 4 -> 60  // 1 daqiqa
+            totalAttempts == 3 -> 30  // 30 soniya
+            else -> 0
         }
-        if (attempts >= 3) {
+
+        if (totalAttempts == 3) {
             captureIntruder()
+        }
+
+        if (lockoutSeconds > 0) {
+            startLockoutCountdown(totalAttempts, lockoutSeconds)
+        } else {
+            val remainingBeforeLockout = 3 - totalAttempts
+            _uiState.update {
+                it.copy(
+                    wrongAttempts = totalAttempts,
+                    totalFailedAttempts = totalAttempts,
+                    isLoading = false,
+                    pinDigits = emptyList(),
+                    patternDots = emptyList(),
+                    errorMessage = "Noto'g'ri! Qoldi: $remainingBeforeLockout urinish"
+                )
+            }
+        }
+    }
+
+    private fun startLockoutCountdown(totalAttempts: Int, seconds: Int) {
+        lockoutJob?.cancel()
+        lockoutJob = viewModelScope.launch {
+            var remaining = seconds
+            while (remaining > 0) {
+                _uiState.update {
+                    it.copy(
+                        wrongAttempts = totalAttempts,
+                        totalFailedAttempts = totalAttempts,
+                        lockoutRemainingSeconds = remaining,
+                        isLoading = false,
+                        pinDigits = emptyList(),
+                        patternDots = emptyList(),
+                        errorMessage = "Xavfsizlik blokirovkasi: ${remaining}s kuting"
+                    )
+                }
+                kotlinx.coroutines.delay(1000L)
+                remaining--
+            }
+            _uiState.update {
+                it.copy(
+                    lockoutRemainingSeconds = 0,
+                    errorMessage = "Qaytadan urinib ko'rishingiz mumkin"
+                )
+            }
         }
     }
 
     private fun captureIntruder() {
         viewModelScope.launch {
             intruderSelfieManager.capture(targetPackage)
-            _uiState.update {
-                it.copy(
-                    wrongAttempts = 0,
-                    errorMessage = "Kirish rad etildi. Suratga olindi."
-                )
-            }
         }
     }
 
     private fun unlock() {
+        lockoutJob?.cancel()
         _uiState.update {
             it.copy(
                 isUnlocked = true,
                 isLoading = false,
                 wrongAttempts = 0,
+                totalFailedAttempts = 0,
+                lockoutRemainingSeconds = 0,
                 errorMessage = null
             )
         }
@@ -166,12 +213,14 @@ class LockScreenViewModel @Inject constructor(
     }
 
     fun onPatternDotAdded(dot: Int) {
+        if (_uiState.value.lockoutRemainingSeconds > 0) return
         val current = _uiState.value.patternDots
         if (current.contains(dot)) return
         _uiState.update { it.copy(patternDots = current + dot) }
     }
 
     fun onPatternCompleted() {
+        if (_uiState.value.lockoutRemainingSeconds > 0) return
         val dots = _uiState.value.patternDots
         if (dots.size < 4) {
             _uiState.update { it.copy(errorMessage = "Kamida 4 ta nuqta ulang", patternDots = emptyList()) }
@@ -181,10 +230,16 @@ class LockScreenViewModel @Inject constructor(
     }
 
     fun resetPin() {
+        if (_uiState.value.lockoutRemainingSeconds > 0) return
         _uiState.update { it.copy(pinDigits = emptyList(), errorMessage = null) }
     }
 
     fun switchToPin() {
         _uiState.update { it.copy(lockMethod = LockMethod.PIN, errorMessage = null) }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        lockoutJob?.cancel()
     }
 }

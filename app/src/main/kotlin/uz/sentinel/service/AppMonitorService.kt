@@ -48,6 +48,9 @@ class AppMonitorService : Service() {
 
     private val mainHandler = Handler(Looper.getMainLooper())
     private var packageScannerReceiver: PackageScannerReceiver? = null
+    private var screenStateReceiver: android.content.BroadcastReceiver? = null
+    @Volatile
+    private var isScreenInteractive: Boolean = true
 
     companion object {
         const val ACTION_START_FROM_BOOT = "uz.sentinel.service.START_FROM_BOOT"
@@ -75,6 +78,9 @@ class AppMonitorService : Service() {
         windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
         usageStatsManager = getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
 
+        val powerManager = getSystemService(Context.POWER_SERVICE) as? android.os.PowerManager
+        isScreenInteractive = powerManager?.isInteractive ?: true
+
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 startForeground(
@@ -90,6 +96,7 @@ class AppMonitorService : Service() {
             android.util.Log.w("AppMonitorService", "startForeground failed gracefully: ${t.message}")
         }
         registerPackageScanner()
+        registerScreenStateReceiver()
         startMonitoring()
     }
 
@@ -101,6 +108,35 @@ class AppMonitorService : Service() {
             addDataScheme("package")
         }
         registerReceiver(packageScannerReceiver, filter)
+    }
+
+    private fun registerScreenStateReceiver() {
+        screenStateReceiver = object : android.content.BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                when (intent?.action) {
+                    Intent.ACTION_SCREEN_OFF -> {
+                        isScreenInteractive = false
+                        android.util.Log.d("AppMonitorService", "Screen OFF: entering ultra-low power standby")
+                    }
+                    Intent.ACTION_SCREEN_ON -> {
+                        isScreenInteractive = true
+                        android.util.Log.d("AppMonitorService", "Screen ON: waking monitor instantly")
+                        serviceScope.launch {
+                            val fg = getForegroundPackage()
+                            if (fg != null && fg != packageName) {
+                                lastForegroundPackage = fg
+                                handleForegroundAppChange(fg)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        val filter = IntentFilter().apply {
+            addAction(Intent.ACTION_SCREEN_OFF)
+            addAction(Intent.ACTION_SCREEN_ON)
+        }
+        registerReceiver(screenStateReceiver, filter)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -118,17 +154,27 @@ class AppMonitorService : Service() {
                 unregisterReceiver(it)
             } catch (e: Exception) {}
         }
+        screenStateReceiver?.let {
+            try {
+                unregisterReceiver(it)
+            } catch (e: Exception) {}
+        }
     }
 
     private fun startMonitoring() {
         serviceScope.launch {
             while (isActive) {
-                val foregroundPackage = getForegroundPackage()
-                if (foregroundPackage != null && foregroundPackage != lastForegroundPackage && foregroundPackage != packageName) {
-                    lastForegroundPackage = foregroundPackage
-                    handleForegroundAppChange(foregroundPackage)
+                if (isScreenInteractive) {
+                    val foregroundPackage = getForegroundPackage()
+                    if (foregroundPackage != null && foregroundPackage != lastForegroundPackage && foregroundPackage != packageName) {
+                        lastForegroundPackage = foregroundPackage
+                        handleForegroundAppChange(foregroundPackage)
+                    }
+                    delay(POLL_INTERVAL_MS)
+                } else {
+                    // Ekran o'chiq paytida ortiqcha CPU va batareya sarflamaymiz
+                    delay(2500L)
                 }
-                delay(POLL_INTERVAL_MS)
             }
         }
     }

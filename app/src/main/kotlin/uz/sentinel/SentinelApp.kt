@@ -7,6 +7,9 @@ import android.content.Context
 import android.os.Build
 import dagger.hilt.android.HiltAndroidApp
 
+import uz.sentinel.service.ServiceWatchdog
+import uz.sentinel.service.ThreatUpdateWorker
+
 @HiltAndroidApp
 class SentinelApp : Application() {
 
@@ -15,6 +18,9 @@ class SentinelApp : Application() {
         installGlobalCrashShield()
         verifyAppIntegrity()
         createNotificationChannels()
+        ServiceWatchdog.schedule(this)
+        ThreatUpdateWorker.schedulePeriodic(this)
+        ThreatUpdateWorker.executeNow(this)
     }
 
     private fun verifyAppIntegrity() {

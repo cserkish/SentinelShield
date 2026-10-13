@@ -120,7 +120,27 @@ fun LockScreen(
                 color = Color.White.copy(alpha = 0.5f),
                 fontSize = 14.sp
             )
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(20.dp))
+
+            if (uiState.lockoutRemainingSeconds > 0) {
+                Box(
+                    modifier = Modifier
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFFD32F2F).copy(alpha = 0.2f))
+                        .border(1.dp, Color(0xFFFF5252), CircleShape)
+                        .padding(horizontal = 20.dp, vertical = 8.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "⏳ Bloklandi: ${uiState.lockoutRemainingSeconds} soniya",
+                        color = Color(0xFFFF8A80),
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+            }
 
             AnimatedContent(
                 targetState = uiState.lockMethod,
@@ -131,12 +151,14 @@ fun LockScreen(
                     LockMethod.PIN -> PinPad(
                         digits = uiState.pinDigits,
                         errorMessage = uiState.errorMessage,
+                        enabled = uiState.lockoutRemainingSeconds == 0,
                         onDigit = viewModel::onPinDigitAdded,
                         onDelete = viewModel::onPinDigitRemoved
                     )
                     LockMethod.PATTERN -> PatternLockComposable(
                         selectedDots = uiState.patternDots,
                         errorMessage = uiState.errorMessage,
+                        enabled = uiState.lockoutRemainingSeconds == 0,
                         onDotSelected = viewModel::onPatternDotAdded,
                         onCompleted = viewModel::onPatternCompleted
                     )
@@ -180,6 +202,7 @@ fun LockScreen(
 private fun PinPad(
     digits: List<Int>,
     errorMessage: String?,
+    enabled: Boolean = true,
     onDigit: (Int) -> Unit,
     onDelete: () -> Unit
 ) {
@@ -233,13 +256,13 @@ private fun PinPad(
                             modifier = Modifier
                                 .size(64.dp)
                                 .clip(CircleShape)
-                                .clickable { onDelete() },
+                                .clickable(enabled = enabled) { onDelete() },
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Backspace,
                                 contentDescription = "Delete",
-                                tint = Color.White.copy(alpha = 0.8f),
+                                tint = if (enabled) Color.White.copy(alpha = 0.8f) else Color.White.copy(alpha = 0.2f),
                                 modifier = Modifier.size(24.dp)
                             )
                         }
@@ -247,14 +270,14 @@ private fun PinPad(
                             modifier = Modifier
                                 .size(64.dp)
                                 .clip(CircleShape)
-                                .background(Color.White.copy(alpha = 0.1f))
-                                .border(1.dp, Color.White.copy(alpha = 0.2f), CircleShape)
-                                .clickable { onDigit(key) },
+                                .background(if (enabled) Color.White.copy(alpha = 0.1f) else Color.White.copy(alpha = 0.03f))
+                                .border(1.dp, if (enabled) Color.White.copy(alpha = 0.2f) else Color.White.copy(alpha = 0.08f), CircleShape)
+                                .clickable(enabled = enabled) { onDigit(key) },
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
                                 text = key.toString(),
-                                color = Color.White,
+                                color = if (enabled) Color.White else Color.White.copy(alpha = 0.25f),
                                 fontSize = 22.sp,
                                 fontWeight = FontWeight.Medium
                             )
@@ -270,6 +293,7 @@ private fun PinPad(
 private fun PatternLockComposable(
     selectedDots: List<Int>,
     errorMessage: String?,
+    enabled: Boolean = true,
     onDotSelected: (Int) -> Unit,
     onCompleted: () -> Unit
 ) {
@@ -305,7 +329,7 @@ private fun PatternLockComposable(
                                 .clip(CircleShape)
                                 .background(dotColor.copy(alpha = 0.15f))
                                 .border(2.dp, dotColor, CircleShape)
-                                .clickable {
+                                .clickable(enabled = enabled) {
                                     onDotSelected(dotIndex)
                                 },
                             contentAlignment = Alignment.Center
@@ -330,8 +354,8 @@ private fun PatternLockComposable(
             Box(
                 modifier = Modifier
                     .clip(CircleShape)
-                    .background(Color(0xFF4FC3F7))
-                    .clickable { onCompleted() }
+                    .background(if (enabled) Color(0xFF4FC3F7) else Color.Gray)
+                    .clickable(enabled = enabled) { onCompleted() }
                     .padding(horizontal = 32.dp, vertical = 12.dp)
             ) {
                 Text(
