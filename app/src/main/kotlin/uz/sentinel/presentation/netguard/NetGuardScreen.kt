@@ -4,9 +4,12 @@ import android.app.Activity
 import android.net.VpnService
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -14,12 +17,16 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import uz.sentinel.data.local.entity.PhishingDomainEntity
+import uz.sentinel.presentation.components.GlassCard
+import uz.sentinel.presentation.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -38,9 +45,15 @@ fun NetGuardScreen(
         }
     }
 
+    val activeColor = if (uiState.isVpnActive) NeonCyan else Color.Gray
+
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background
+                ),
                 title = { Text("NetGuard Tarmoq Himoyasi", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
@@ -56,38 +69,52 @@ fun NetGuardScreen(
                 .padding(padding)
                 .padding(16.dp)
         ) {
-            // VPN Status Card
-            Card(
+            // VPN Status Card (Frosted Glass Card)
+            GlassCard(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = if (uiState.isVpnActive)
-                        MaterialTheme.colorScheme.primaryContainer
-                    else
-                        MaterialTheme.colorScheme.surfaceVariant
-                )
+                shape = RoundedCornerShape(24.dp),
+                backgroundColor = ObsidianSurface,
+                borderColor = activeColor.copy(alpha = 0.35f),
+                borderWidth = 1.dp
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(20.dp),
+                        .padding(vertical = 12.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Icon(
-                        imageVector = if (uiState.isVpnActive) Icons.Default.VpnLock else Icons.Default.VpnKeyOff,
-                        contentDescription = null,
-                        modifier = Modifier.size(56.dp),
-                        tint = if (uiState.isVpnActive) MaterialTheme.colorScheme.primary else Color.Gray
-                    )
-                    Spacer(modifier = Modifier.height(10.dp))
+                    if (uiState.isVpnActive) {
+                        NetworkWavePulse(color = NeonCyan)
+                    } else {
+                        Surface(
+                            shape = CircleShape,
+                            color = ObsidianSurfaceElev,
+                            border = androidx.compose.foundation.BorderStroke(1.dp, GlassBorderWhite),
+                            modifier = Modifier.size(68.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.VpnKeyOff,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(36.dp),
+                                    tint = Color.Gray
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
                     Text(
-                        text = if (uiState.isVpnActive) "Mahalliy DNS Himoyasi Faol" else "Tarmoq himoyasi o'chiq",
+                        text = if (uiState.isVpnActive) "Lokal DNS Himoyasi Faol" else "Tarmoq Himoyasi O'chiq",
                         fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp
+                        fontSize = 18.sp,
+                        color = if (uiState.isVpnActive) NeonCyan else MaterialTheme.colorScheme.onSurface
                     )
+                    Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = "Fishing va soxta bank saytlariga kirish bloklanadi",
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
@@ -106,8 +133,51 @@ fun NetGuardScreen(
                             } else {
                                 viewModel.toggleVpn(false)
                             }
-                        }
+                        },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = ObsidianBlack,
+                            checkedTrackColor = NeonCyan,
+                            uncheckedThumbColor = Color.Gray,
+                            uncheckedTrackColor = ObsidianSurfaceElev
+                        )
                     )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Banklar va Payme Oq Ro'yxati Axborot Kartasi
+            GlassCard(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                backgroundColor = ObsidianSurfaceElev,
+                borderColor = GlassBorderTeal,
+                borderWidth = 1.dp
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.VerifiedUser,
+                        contentDescription = null,
+                        tint = CyberTeal,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            text = "Ultra Whitelist Faol",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp,
+                            color = CyberTeal
+                        )
+                        Text(
+                            text = "Payme, Click, Uzcard, Humo va barcha rasmiy banklar oq ro'yxatda. Soxta klonlar esa qat'iy tutiladi.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
 
@@ -116,23 +186,37 @@ fun NetGuardScreen(
             Text(
                 text = "Bloklangan fishing domenlari",
                 fontWeight = FontWeight.Bold,
-                fontSize = 16.sp
+                fontSize = 16.sp,
+                color = MaterialTheme.colorScheme.onSurface
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             if (uiState.blockedDomains.isEmpty()) {
-                Card(
+                GlassCard(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                    shape = RoundedCornerShape(16.dp),
+                    backgroundColor = ObsidianSurfaceElev,
+                    borderColor = GlassBorderWhite,
+                    borderWidth = 1.dp
                 ) {
-                    Text(
-                        text = "Ma'lumotlar bazasi muntazam yangilanib boradi. Shubhali domenlar bu yerda ko'rinadi.",
-                        modifier = Modifier.padding(16.dp),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.Gray
-                    )
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CheckCircle,
+                            contentDescription = null,
+                            tint = NeonEmerald,
+                            modifier = Modifier.size(36.dp)
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Hozircha hech qanday shubhali so'rov aniqlanmadi.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             } else {
                 LazyColumn(
@@ -140,7 +224,7 @@ fun NetGuardScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(uiState.blockedDomains) { domainEntity ->
-                        BlockedDomainRow(domainEntity)
+                        ModernBlockedDomainRow(domainEntity)
                     }
                 }
             }
@@ -149,24 +233,92 @@ fun NetGuardScreen(
 }
 
 @Composable
-fun BlockedDomainRow(entity: PhishingDomainEntity) {
-    Card(
+fun NetworkWavePulse(color: Color) {
+    val infiniteTransition = rememberInfiniteTransition(label = "pulseWave")
+    val pulseRadius by infiniteTransition.animateFloat(
+        initialValue = 0.6f,
+        targetValue = 1.2f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1800, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "pulseRadius"
+    )
+
+    Box(
+        modifier = Modifier.size(68.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val center = Offset(size.width / 2f, size.height / 2f)
+            val baseRadius = size.minDimension / 2.5f
+
+            drawCircle(
+                color = color.copy(alpha = (1.2f - pulseRadius).coerceIn(0f, 0.5f)),
+                radius = baseRadius * pulseRadius,
+                style = Stroke(width = 2.dp.toPx())
+            )
+        }
+
+        Surface(
+            shape = CircleShape,
+            color = color.copy(alpha = 0.15f),
+            border = androidx.compose.foundation.BorderStroke(1.5.dp, color.copy(alpha = 0.5f)),
+            modifier = Modifier.size(54.dp)
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    imageVector = Icons.Default.VpnLock,
+                    contentDescription = null,
+                    modifier = Modifier.size(30.dp),
+                    tint = color
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun ModernBlockedDomainRow(entity: PhishingDomainEntity) {
+    GlassCard(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+        shape = RoundedCornerShape(14.dp),
+        backgroundColor = ObsidianSurfaceElev,
+        borderColor = NeonCrimson.copy(alpha = 0.3f),
+        borderWidth = 1.dp
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(14.dp),
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = entity.domain, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                Text(text = entity.category, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                Text(
+                    text = entity.domain,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = entity.category,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = NeonCrimson
+                )
             }
-            Icon(Icons.Default.Block, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+            Surface(
+                shape = CircleShape,
+                color = NeonCrimson.copy(alpha = 0.15f),
+                modifier = Modifier.size(32.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        Icons.Default.Block,
+                        contentDescription = "Bloklangan",
+                        tint = NeonCrimson,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
         }
     }
 }

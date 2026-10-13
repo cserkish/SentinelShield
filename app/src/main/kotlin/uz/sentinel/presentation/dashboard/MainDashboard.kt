@@ -1,5 +1,6 @@
 package uz.sentinel.presentation.dashboard
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -14,14 +15,16 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.foundation.Image
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import uz.sentinel.presentation.components.GlassCard
+import uz.sentinel.presentation.components.HeroPulseShield
+import uz.sentinel.presentation.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,24 +40,63 @@ fun MainDashboard(
     val uiState by viewModel.uiState.collectAsState()
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background
+                ),
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Image(
-                            painter = painterResource(id = uz.sentinel.sentinelshield.R.drawable.sentinel_logo),
-                            contentDescription = "SentinelShield Logo",
-                            modifier = Modifier
-                                .size(32.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                        )
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Text("SentinelShield", fontWeight = FontWeight.Bold)
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = ObsidianSurfaceElev,
+                            border = androidx.compose.foundation.BorderStroke(1.dp, GlassBorderTeal),
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Image(
+                                painter = painterResource(id = uz.sentinel.sentinelshield.R.drawable.sentinel_logo),
+                                contentDescription = "SentinelShield Logo",
+                                modifier = Modifier
+                                    .padding(4.dp)
+                                    .fillMaxSize()
+                                    .clip(CircleShape)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text(
+                                "SentinelShield",
+                                fontWeight = FontWeight.ExtraBold,
+                                fontSize = 18.sp,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                "Kiber Himoya Tizimi",
+                                fontSize = 11.sp,
+                                color = CyberTeal,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
                     }
                 },
                 actions = {
                     IconButton(onClick = onNavigateToStability) {
-                        Icon(Icons.Default.BatterySaver, contentDescription = "Batareya sozlamasi")
+                        Surface(
+                            shape = CircleShape,
+                            color = ObsidianSurfaceElev,
+                            border = androidx.compose.foundation.BorderStroke(1.dp, GlassBorderWhite),
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    Icons.Default.BatterySaver,
+                                    contentDescription = "Batareya sozlamasi",
+                                    tint = CyberTeal,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
                     }
                 }
             )
@@ -64,91 +106,92 @@ fun MainDashboard(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(16.dp)
+                .padding(horizontal = 16.dp)
                 .verticalScroll(rememberScrollState())
         ) {
-            // Main Big Shield Card
-            val shieldColor = if (uiState.isDeviceSafe) Color(0xFF2E7D32) else Color(0xFFD32F2F)
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onNavigateToAntivirus() },
-                shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(containerColor = shieldColor.copy(alpha = 0.1f))
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // 1. Markaziy Jonli Qalqon (Hero Pulse Shield & Health Telemetry)
+            HeroPulseShield(
+                isDeviceSafe = uiState.isDeviceSafe,
+                healthScore = uiState.healthScore,
+                riskCount = uiState.highRiskAppCount,
+                onClick = onNavigateToAntivirus
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // 2. Telemetriya Qisqa Satri (building-data-apps)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Surface(
-                        shape = CircleShape,
-                        color = shieldColor.copy(alpha = 0.2f),
-                        modifier = Modifier.size(84.dp)
-                    ) {
-                        if (uiState.isDeviceSafe) {
-                            Image(
-                                painter = painterResource(id = uz.sentinel.sentinelshield.R.drawable.sentinel_logo),
-                                contentDescription = "Himoyalangan",
-                                modifier = Modifier
-                                    .padding(6.dp)
-                                    .fillMaxSize()
-                                    .clip(CircleShape)
-                            )
-                        } else {
-                            Icon(
-                                imageVector = Icons.Default.GppBad,
-                                contentDescription = null,
-                                tint = shieldColor,
-                                modifier = Modifier
-                                    .padding(18.dp)
-                                    .fillMaxSize()
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(14.dp))
-                    Text(
-                        text = if (uiState.isDeviceSafe) "Qurilmangiz Himoyalangan" else "Xavf Aniqlangan!",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 20.sp,
-                        color = shieldColor
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = if (uiState.isDeviceSafe)
-                            "Zararli ilovalar va fishing tahdidlari topilmadi"
-                        else
-                            "${uiState.highRiskAppCount} ta ilovada xavfli ruxsatlar mavjud",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                QuickMetricBadge(
+                    modifier = Modifier.weight(1f),
+                    label = "Tekshirildi",
+                    value = "${uiState.totalScannedApps}",
+                    accentColor = CyberTeal
+                )
+                QuickMetricBadge(
+                    modifier = Modifier.weight(1f),
+                    label = "Tozalandi",
+                    value = "${String.format("%.1f", uiState.lastCleanedMb)} MB",
+                    accentColor = NeonEmerald
+                )
+                QuickMetricBadge(
+                    modifier = Modifier.weight(1f),
+                    label = "NetGuard",
+                    value = if (uiState.isNetGuardActive) "Faol" else "O'chiq",
+                    accentColor = if (uiState.isNetGuardActive) NeonCyan else Color.Gray
+                )
             }
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            Text("Asosiy Himoya Vositalari", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "Asosiy Himoya Modullari",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.weight(1f))
+                Surface(
+                    shape = RoundedCornerShape(6.dp),
+                    color = CyberTeal.copy(alpha = 0.12f)
+                ) {
+                    Text(
+                        "4 TA MODUL",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = CyberTeal,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                    )
+                }
+            }
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // 2x2 Grid Cards
+            // 3. 2x2 Shishasimon Modullar To'plami (Frosted Glass Cards)
             Row(modifier = Modifier.fillMaxWidth()) {
-                ModuleCard(
+                ModernModuleCard(
                     modifier = Modifier.weight(1f),
                     title = "Antivirus",
-                    subtitle = "Ilovalarni tahlil qilish",
+                    subtitle = if (uiState.highRiskAppCount > 0)
+                        "${uiState.highRiskAppCount} ta xavf!"
+                    else
+                        "${uiState.totalScannedApps} ilova xavfsiz",
                     icon = Icons.Default.BugReport,
-                    iconColor = Color(0xFF1976D2),
+                    accentColor = if (uiState.highRiskAppCount > 0) NeonCrimson else CyberTeal,
                     onClick = onNavigateToAntivirus
                 )
                 Spacer(modifier = Modifier.width(12.dp))
-                ModuleCard(
+                ModernModuleCard(
                     modifier = Modifier.weight(1f),
                     title = "Tozalash",
                     subtitle = "Kesh va qoldiqlar",
                     icon = Icons.Default.CleaningServices,
-                    iconColor = Color(0xFF388E3C),
+                    accentColor = NeonEmerald,
                     onClick = onNavigateToCleaner
                 )
             }
@@ -156,83 +199,165 @@ fun MainDashboard(
             Spacer(modifier = Modifier.height(12.dp))
 
             Row(modifier = Modifier.fillMaxWidth()) {
-                ModuleCard(
+                ModernModuleCard(
                     modifier = Modifier.weight(1f),
                     title = "AppLock",
                     subtitle = "${uiState.lockedAppCount} ta ilova qulflangan",
                     icon = Icons.Default.Lock,
-                    iconColor = Color(0xFFF57C00),
+                    accentColor = NeonViolet,
                     onClick = onNavigateToAppLock
                 )
                 Spacer(modifier = Modifier.width(12.dp))
-                ModuleCard(
+                ModernModuleCard(
                     modifier = Modifier.weight(1f),
                     title = "NetGuard",
-                    subtitle = if (uiState.isNetGuardActive) "Faol" else "O'chiq",
+                    subtitle = if (uiState.isNetGuardActive) "DNS Himoya Faol" else "O'chirilgan",
                     icon = Icons.Default.VpnLock,
-                    iconColor = Color(0xFF7B1FA2),
+                    accentColor = NeonCyan,
                     onClick = onNavigateToNetGuard
                 )
             }
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Full-width Permission Auditor Card
-            Card(
+            // 4. Maxfiylik va Ruxsatlar Auditi (Full-width Glass Card)
+            GlassCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable { onNavigateToPermissions() },
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                shape = RoundedCornerShape(20.dp),
+                backgroundColor = ObsidianSurface,
+                borderColor = GlassBorderWhite,
+                borderWidth = 1.dp
             ) {
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Security,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(32.dp)
-                    )
-                    Spacer(modifier = Modifier.width(16.dp))
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = CyberTealDark,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, GlassBorderTeal),
+                        modifier = Modifier.size(44.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Default.Security,
+                                contentDescription = null,
+                                tint = CyberTeal,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.width(14.dp))
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("Maxfiylik va Ruxsatlar Auditi", fontWeight = FontWeight.Bold, fontSize = 15.sp)
                         Text(
-                            "Kamera, mikrofon va joylashuvdan foydalanayotgan ilovalar",
+                            "Maxfiylik va Ruxsatlar Auditi",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            "Kamera, mikrofon va kontaktlar monitoringi",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    Icon(Icons.Default.ChevronRight, contentDescription = null)
+                    Icon(
+                        Icons.Default.ChevronRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
+
+            Spacer(modifier = Modifier.height(20.dp))
         }
     }
 }
 
 @Composable
-fun ModuleCard(
+fun QuickMetricBadge(
+    modifier: Modifier = Modifier,
+    label: String,
+    value: String,
+    accentColor: Color
+) {
+    GlassCard(
+        modifier = modifier,
+        shape = RoundedCornerShape(14.dp),
+        backgroundColor = ObsidianSurfaceElev,
+        borderColor = GlassBorderWhite,
+        borderWidth = 1.dp
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = value,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                color = accentColor,
+                maxLines = 1
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = label,
+                fontSize = 10.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1
+            )
+        }
+    }
+}
+
+@Composable
+fun ModernModuleCard(
     modifier: Modifier = Modifier,
     title: String,
     subtitle: String,
     icon: ImageVector,
-    iconColor: Color,
+    accentColor: Color,
     onClick: () -> Unit
 ) {
-    Card(
+    GlassCard(
         modifier = modifier.clickable { onClick() },
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+        shape = RoundedCornerShape(20.dp),
+        backgroundColor = ObsidianSurface,
+        borderColor = accentColor.copy(alpha = 0.25f),
+        borderWidth = 1.dp
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Icon(imageVector = icon, contentDescription = null, tint = iconColor, modifier = Modifier.size(30.dp))
-            Spacer(modifier = Modifier.height(12.dp))
-            Text(text = title, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = accentColor.copy(alpha = 0.12f),
+                modifier = Modifier.size(42.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = accentColor,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(14.dp))
+            Text(
+                text = title,
+                fontWeight = FontWeight.Bold,
+                fontSize = 15.sp,
+                color = MaterialTheme.colorScheme.onSurface
+            )
             Spacer(modifier = Modifier.height(4.dp))
-            Text(text = subtitle, style = MaterialTheme.typography.bodySmall, color = Color.Gray, maxLines = 1)
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1
+            )
         }
     }
 }

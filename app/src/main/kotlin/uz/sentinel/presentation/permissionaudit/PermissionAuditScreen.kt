@@ -20,6 +20,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import uz.sentinel.domain.model.AppPermissionInfo
+import uz.sentinel.presentation.components.GlassCard
+import uz.sentinel.presentation.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -33,8 +35,12 @@ fun PermissionAuditScreen(
     val tabs = listOf("Hammasi", "Mikrofon", "Kamera", "Joylashuv", "Kontaktlar")
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background
+                ),
                 title = { Text("Ruxsatlar Auditi", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
@@ -51,13 +57,27 @@ fun PermissionAuditScreen(
         ) {
             ScrollableTabRow(
                 selectedTabIndex = selectedTab,
-                edgePadding = 16.dp
+                edgePadding = 16.dp,
+                containerColor = MaterialTheme.colorScheme.background,
+                contentColor = CyberTeal,
+                indicator = { tabPositions ->
+                    TabRowDefaults.SecondaryIndicator(
+                        Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
+                        color = CyberTeal
+                    )
+                }
             ) {
                 tabs.forEachIndexed { index, title ->
                     Tab(
                         selected = selectedTab == index,
                         onClick = { selectedTab = index },
-                        text = { Text(title) }
+                        text = {
+                            Text(
+                                title,
+                                fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Normal,
+                                color = if (selectedTab == index) CyberTeal else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     )
                 }
             }
@@ -65,12 +85,12 @@ fun PermissionAuditScreen(
             when (val state = uiState) {
                 is PermissionAuditUiState.Loading -> {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
+                        CircularProgressIndicator(color = CyberTeal)
                     }
                 }
                 is PermissionAuditUiState.Error -> {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(text = state.message, color = MaterialTheme.colorScheme.error)
+                        Text(text = state.message, color = NeonCrimson)
                     }
                 }
                 is PermissionAuditUiState.Success -> {
@@ -89,7 +109,7 @@ fun PermissionAuditScreen(
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         items(filteredApps, key = { it.packageName }) { appInfo ->
-                            PermissionAppRow(appInfo) {
+                            ModernPermissionAppRow(appInfo) {
                                 try {
                                     val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
                                         data = Uri.fromParts("package", appInfo.packageName, null)
@@ -107,16 +127,18 @@ fun PermissionAuditScreen(
 }
 
 @Composable
-fun PermissionAppRow(
+fun ModernPermissionAppRow(
     app: AppPermissionInfo,
     onOpenSettings: () -> Unit
 ) {
-    Card(
+    GlassCard(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+        shape = RoundedCornerShape(16.dp),
+        backgroundColor = ObsidianSurfaceElev,
+        borderColor = if (app.isSystemApp) GlassBorderWhite else NeonAmber.copy(alpha = 0.25f),
+        borderWidth = 1.dp
     ) {
-        Column(modifier = Modifier.padding(14.dp)) {
+        Column(modifier = Modifier.fillMaxWidth()) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -124,36 +146,50 @@ fun PermissionAppRow(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(text = app.appName, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                        Text(
+                            text = app.appName,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
                         if (app.isSystemApp) {
                             Spacer(modifier = Modifier.width(8.dp))
-                            Box(
-                                modifier = Modifier
-                                    .background(Color(0xFF2E7D32).copy(alpha = 0.15f), RoundedCornerShape(6.dp))
-                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = NeonEmerald.copy(alpha = 0.12f),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, NeonEmerald.copy(alpha = 0.3f))
                             ) {
                                 Text(
                                     text = "Tizim ilovasi",
-                                    color = Color(0xFF2E7D32),
+                                    color = NeonEmerald,
                                     fontWeight = FontWeight.SemiBold,
-                                    fontSize = 10.sp
+                                    fontSize = 10.sp,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                 )
                             }
                         }
                     }
-                    Text(text = app.packageName, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                    Text(
+                        text = app.packageName,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
                 IconButton(onClick = onOpenSettings) {
-                    Icon(Icons.Default.Settings, contentDescription = "Sozlamalar")
+                    Icon(
+                        Icons.Default.Settings,
+                        contentDescription = "Sozlamalar",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
 
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "Berilgan ruxsatlar: ${app.grantedDangerousPerms.joinToString(", ")}",
+                text = "Ruxsatlar: ${app.grantedDangerousPerms.joinToString(", ")}",
                 style = MaterialTheme.typography.bodySmall,
-                color = if (app.isSystemApp) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error
+                color = if (app.isSystemApp) MaterialTheme.colorScheme.onSurfaceVariant else NeonAmber
             )
         }
     }

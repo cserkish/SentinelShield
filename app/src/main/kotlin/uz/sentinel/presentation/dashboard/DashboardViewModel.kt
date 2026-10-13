@@ -14,7 +14,9 @@ data class DashboardUiState(
     val lockedAppCount: Int = 0,
     val lastCleanedMb: Double = 0.0,
     val isNetGuardActive: Boolean = false,
-    val isDeviceSafe: Boolean = true
+    val isDeviceSafe: Boolean = true,
+    val healthScore: Int = 100,
+    val totalScannedApps: Int = 0
 )
 
 @HiltViewModel
@@ -26,16 +28,24 @@ class DashboardViewModel @Inject constructor(
 
     val uiState: StateFlow<DashboardUiState> = combine(
         scanResultDao.getHighRiskCountFlow().catch { emit(0) },
+        scanResultDao.getAllResultsFlow().catch { emit(emptyList()) },
         lockedAppDao.getLockedAppsFlow().catch { emit(emptyList()) },
         preferences.lastCleanBytes.catch { emit(0L) },
         preferences.isNetGuardEnabled.catch { emit(false) }
-    ) { highRisks, lockedApps, cleanBytes, netGuardEnabled ->
+    ) { highRisks, scannedApps, lockedApps, cleanBytes, netGuardEnabled ->
+        val score = when {
+            highRisks > 0 -> (100 - (highRisks * 25)).coerceIn(20, 60)
+            !netGuardEnabled -> 92
+            else -> 100
+        }
         DashboardUiState(
             highRiskAppCount = highRisks,
             lockedAppCount = lockedApps.size,
             lastCleanedMb = cleanBytes / (1024.0 * 1024.0),
             isNetGuardActive = netGuardEnabled,
-            isDeviceSafe = highRisks == 0
+            isDeviceSafe = highRisks == 0,
+            healthScore = score,
+            totalScannedApps = scannedApps.size
         )
     }.catch {
         emit(DashboardUiState())
@@ -45,3 +55,4 @@ class DashboardViewModel @Inject constructor(
         initialValue = DashboardUiState()
     )
 }
+

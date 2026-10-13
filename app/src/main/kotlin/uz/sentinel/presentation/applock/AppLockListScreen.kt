@@ -174,20 +174,22 @@ fun AppLockListScreen(
                 Spacer(modifier = Modifier.height(14.dp))
             }
 
-            Card(
+            uz.sentinel.presentation.components.GlassCard(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
+                shape = RoundedCornerShape(18.dp),
+                backgroundColor = uz.sentinel.presentation.theme.ObsidianSurface,
+                borderColor = uz.sentinel.presentation.theme.GlassBorderTeal,
+                borderWidth = 1.dp
             ) {
                 Row(
-                    modifier = Modifier.padding(16.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
                         imageVector = Icons.Default.Lock,
                         contentDescription = null,
-                        modifier = Modifier.size(36.dp),
-                        tint = MaterialTheme.colorScheme.tertiary
+                        modifier = Modifier.size(32.dp),
+                        tint = uz.sentinel.presentation.theme.NeonViolet
                     )
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
@@ -197,7 +199,8 @@ fun AppLockListScreen(
                                 "Ilovalarni qulflash uchun shaxsiy 6 xonali PIN o'rnating."
                             else
                                 "Qulflangan ilovalar ochilganda PIN kod so'raladi.",
-                            style = MaterialTheme.typography.bodySmall
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -362,25 +365,38 @@ fun AppLockRow(
     item: AppLockItem,
     onToggle: (Boolean) -> Unit
 ) {
-    Card(
+    uz.sentinel.presentation.components.GlassCard(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+        shape = RoundedCornerShape(14.dp),
+        backgroundColor = uz.sentinel.presentation.theme.ObsidianSurfaceElev,
+        borderColor = if (item.isLocked) uz.sentinel.presentation.theme.NeonViolet.copy(alpha = 0.4f) else uz.sentinel.presentation.theme.GlassBorderWhite,
+        borderWidth = 1.dp
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(14.dp),
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = item.appName, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
-                Text(text = item.packageName, style = MaterialTheme.typography.bodySmall)
+                Text(
+                    text = item.appName,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 15.sp,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = item.packageName,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
             Switch(
                 checked = item.isLocked,
-                onCheckedChange = onToggle
+                onCheckedChange = onToggle,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = uz.sentinel.presentation.theme.ObsidianBlack,
+                    checkedTrackColor = uz.sentinel.presentation.theme.NeonViolet
+                )
             )
         }
     }

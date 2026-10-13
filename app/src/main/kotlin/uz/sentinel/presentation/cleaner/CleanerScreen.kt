@@ -1,5 +1,6 @@
 package uz.sentinel.presentation.cleaner
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -16,7 +17,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import uz.sentinel.domain.model.JunkCategory
 import uz.sentinel.domain.model.JunkItem
+import uz.sentinel.presentation.components.GlassCard
+import uz.sentinel.presentation.components.StorageCategoryData
+import uz.sentinel.presentation.components.StorageDonutChart
+import uz.sentinel.presentation.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -27,9 +33,36 @@ fun CleanerScreen(
     val uiState by viewModel.uiState.collectAsState()
     val mbTotal = String.format("%.1f", uiState.totalSizeBytes / (1024.0 * 1024.0))
 
+    val categoriesData = listOf(
+        StorageCategoryData(
+            name = "Ilovalar keshi",
+            sizeBytes = uiState.items.filter { it.category == JunkCategory.APP_CACHE }.sumOf { it.sizeBytes },
+            color = CyberTeal
+        ),
+        StorageCategoryData(
+            name = "Vaqtinchalik fayllar",
+            sizeBytes = uiState.items.filter { it.category == JunkCategory.TEMP_FILES }.sumOf { it.sizeBytes },
+            color = NeonAmber
+        ),
+        StorageCategoryData(
+            name = "Miniatyuralar",
+            sizeBytes = uiState.items.filter { it.category == JunkCategory.THUMBNAILS }.sumOf { it.sizeBytes },
+            color = NeonViolet
+        ),
+        StorageCategoryData(
+            name = "APK qoldiqlari",
+            sizeBytes = uiState.items.filter { it.category == JunkCategory.DOWNLOADED_APKS }.sumOf { it.sizeBytes },
+            color = NeonCyan
+        )
+    )
+
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background
+                ),
                 title = { Text("Xotira Tozalash", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
@@ -38,7 +71,7 @@ fun CleanerScreen(
                 },
                 actions = {
                     IconButton(onClick = { viewModel.startScan() }, enabled = !uiState.isScanning) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Qayta tahlil")
+                        Icon(Icons.Default.Refresh, contentDescription = "Qayta tahlil", tint = CyberTeal)
                     }
                 }
             )
@@ -50,43 +83,37 @@ fun CleanerScreen(
                 .padding(padding)
                 .padding(16.dp)
         ) {
-            // Summary Card
-            Card(
+            // Zamonaviy Donut Telemetriya Kartasi
+            GlassCard(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+                shape = RoundedCornerShape(24.dp),
+                backgroundColor = ObsidianSurface,
+                borderColor = GlassBorderTeal,
+                borderWidth = 1.dp
             ) {
                 Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(24.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.CleaningServices,
-                        contentDescription = null,
-                        modifier = Modifier.size(52.dp),
-                        tint = MaterialTheme.colorScheme.secondary
-                    )
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Text(
-                        text = if (uiState.isScanning) "Tahlil qilinmoqda..." else "$mbTotal MB",
-                        fontWeight = FontWeight.ExtraBold,
-                        fontSize = 32.sp
-                    )
-                    Text(
-                        text = "Tozalash uchun xavfsiz topilgan fayllar",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                    StorageDonutChart(
+                        categories = categoriesData,
+                        totalSizeBytes = uiState.totalSizeBytes
                     )
 
                     if (uiState.cleanSuccessMessage != null) {
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text(
-                            text = uiState.cleanSuccessMessage!!,
-                            color = Color(0xFF2E7D32),
-                            fontWeight = FontWeight.Bold
-                        )
+                        Spacer(modifier = Modifier.height(14.dp))
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = NeonEmerald.copy(alpha = 0.15f)
+                        ) {
+                            Text(
+                                text = "✓ ${uiState.cleanSuccessMessage!!}",
+                                color = NeonEmerald,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                            )
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -94,20 +121,33 @@ fun CleanerScreen(
                     Button(
                         onClick = { viewModel.cleanSelected() },
                         enabled = uiState.items.any { it.isSelected } && !uiState.isCleaning && !uiState.isScanning,
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.fillMaxWidth()
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = CyberTeal,
+                            contentColor = ObsidianBlack,
+                            disabledContainerColor = ObsidianSurfaceElev,
+                            disabledContentColor = Color.Gray
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp)
                     ) {
                         if (uiState.isCleaning) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(20.dp),
-                                color = MaterialTheme.colorScheme.onPrimary
+                                color = ObsidianBlack,
+                                strokeWidth = 2.5.dp
                             )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Tozalanmoqda...")
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text("Xavfsiz tozalanmoqda...", fontWeight = FontWeight.Bold)
                         } else {
                             Icon(Icons.Default.DeleteSweep, contentDescription = null)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Xavfsiz tozalash ($mbTotal MB)")
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(
+                                text = "Xavfsiz tozalash ($mbTotal MB)",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 15.sp
+                            )
                         }
                     }
                 }
@@ -115,25 +155,60 @@ fun CleanerScreen(
 
             Spacer(modifier = Modifier.height(18.dp))
 
-            Text(
-                text = "Topilgan kesh va vaqtinchalik fayllar (${uiState.items.size})",
-                fontWeight = FontWeight.Bold,
-                fontSize = 15.sp
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "Topilgan axlat fayllar (${uiState.items.size})",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.weight(1f))
+                if (uiState.items.isNotEmpty()) {
+                    Text(
+                        text = "Hammasi xavfsiz",
+                        fontSize = 11.sp,
+                        color = NeonEmerald,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             if (uiState.isScanning) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        CircularProgressIndicator(color = CyberTeal)
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            "Xotira chuqur tahlil qilinmoqda...",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 13.sp
+                        )
+                    }
                 }
             } else if (uiState.items.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(
-                        text = "Tozalash uchun keraksiz fayllar yo'q! Telefon toza.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.Gray
-                    )
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            imageVector = Icons.Default.CheckCircle,
+                            contentDescription = null,
+                            tint = NeonEmerald,
+                            modifier = Modifier.size(56.dp)
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = "Qurilmangiz toza!",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 17.sp,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "Keraksiz kesh yoki qoldiq fayllar topilmadi",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             } else {
                 LazyColumn(
@@ -141,7 +216,7 @@ fun CleanerScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(uiState.items, key = { it.path }) { item ->
-                        JunkRowItem(
+                        ModernJunkRowItem(
                             item = item,
                             onToggle = { viewModel.toggleItemSelection(item.path) }
                         )
@@ -153,30 +228,56 @@ fun CleanerScreen(
 }
 
 @Composable
-fun JunkRowItem(item: JunkItem, onToggle: () -> Unit) {
+fun ModernJunkRowItem(item: JunkItem, onToggle: () -> Unit) {
     val sizeKb = String.format("%.1f", item.sizeBytes / 1024.0)
+    val categoryColor = when (item.category) {
+        JunkCategory.APP_CACHE -> CyberTeal
+        JunkCategory.TEMP_FILES -> NeonAmber
+        JunkCategory.THUMBNAILS -> NeonViolet
+        JunkCategory.DOWNLOADED_APKS -> NeonCyan
+    }
 
-    Card(
+    GlassCard(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+        shape = RoundedCornerShape(14.dp),
+        backgroundColor = ObsidianSurfaceElev,
+        borderColor = GlassBorderWhite,
+        borderWidth = 1.dp,
+        onClick = onToggle
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Checkbox(
                 checked = item.isSelected,
-                onCheckedChange = { onToggle() }
+                onCheckedChange = { onToggle() },
+                colors = CheckboxDefaults.colors(
+                    checkedColor = CyberTeal,
+                    checkmarkColor = ObsidianBlack
+                )
             )
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.width(6.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = item.name, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, maxLines = 1)
-                Text(text = item.category.title, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                Text(
+                    text = item.name,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1
+                )
+                Text(
+                    text = item.category.title,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = categoryColor
+                )
             }
-            Text(text = "$sizeKb KB", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+            Text(
+                text = "$sizeKb KB",
+                fontWeight = FontWeight.Bold,
+                fontSize = 13.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

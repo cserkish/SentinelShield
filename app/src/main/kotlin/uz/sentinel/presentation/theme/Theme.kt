@@ -43,40 +43,40 @@ private val LightColors = lightColorScheme(
 )
 
 private val DarkColors = darkColorScheme(
-    primary = Teal80,
-    onPrimary = Teal20,
-    primaryContainer = Teal30,
-    onPrimaryContainer = Teal90,
-    secondary = TealGrey80,
-    onSecondary = TealGrey20,
-    secondaryContainer = TealGrey30,
-    onSecondaryContainer = TealGrey90,
-    tertiary = Amber80,
-    onTertiary = Amber20,
-    tertiaryContainer = Amber30,
-    onTertiaryContainer = Amber90,
-    error = Red80,
-    onError = Red20,
-    errorContainer = Red30,
-    onErrorContainer = Red90,
-    background = Neutral10,
-    onBackground = Neutral90,
-    surface = Neutral10,
-    onSurface = Neutral90,
-    surfaceVariant = NeutralVar30,
-    onSurfaceVariant = NeutralVar80,
-    outline = NeutralVar50,
-    outlineVariant = NeutralVar30,
-    inverseSurface = Neutral90,
-    inverseOnSurface = Neutral10,
+    primary = CyberTeal,
+    onPrimary = Color(0xFF00382E),
+    primaryContainer = CyberTealDark,
+    onPrimaryContainer = Color(0xFF7FF5E7),
+    secondary = Color(0xFF4DD0E1),
+    onSecondary = Color(0xFF00363D),
+    secondaryContainer = Color(0xFF004F58),
+    onSecondaryContainer = Color(0xFF97F0FF),
+    tertiary = NeonAmber,
+    onTertiary = Color(0xFF452B00),
+    tertiaryContainer = Color(0xFF633F00),
+    onTertiaryContainer = Color(0xFFFFDDB3),
+    error = NeonCrimson,
+    onError = Color(0xFF69001A),
+    errorContainer = Color(0xFF930028),
+    onErrorContainer = Color(0xFFFFD9DD),
+    background = ObsidianBlack,
+    onBackground = Color(0xFFE1E3E4),
+    surface = ObsidianSurface,
+    onSurface = Color(0xFFE1E3E4),
+    surfaceVariant = ObsidianSurfaceElev,
+    onSurfaceVariant = Color(0xFFC0C8C8),
+    outline = GlassBorderTeal,
+    outlineVariant = GlassBorderWhite,
+    inverseSurface = Color(0xFFE1E3E4),
+    inverseOnSurface = ObsidianBlack,
     inversePrimary = Teal40,
     scrim = Color.Black
 )
 
 @Composable
 fun SentinelShieldTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = true,
+    darkTheme: Boolean = true, // Default to our signature Cyber-Teal Dark security experience
+    dynamicColor: Boolean = false, // Keep consistent cyber branding across devices
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {

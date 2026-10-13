@@ -1,5 +1,7 @@
 package uz.sentinel.presentation.antivirus
 
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -14,12 +16,18 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import uz.sentinel.domain.model.DangerLevel
 import uz.sentinel.domain.model.ScanResult
+import uz.sentinel.presentation.components.GlassCard
+import uz.sentinel.presentation.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -29,9 +37,18 @@ fun AntivirusScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
+    val statusColor = when {
+        uiState.highRiskCount > 0 -> NeonCrimson
+        else -> CyberTeal
+    }
+
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background
+                ),
                 title = { Text("Antivirus Himoyasi", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
@@ -43,7 +60,7 @@ fun AntivirusScreen(
                         onClick = { viewModel.scanAllApps() },
                         enabled = !uiState.isScanning
                     ) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Qayta skanerlash")
+                        Icon(Icons.Default.Refresh, contentDescription = "Qayta skanerlash", tint = CyberTeal)
                     }
                 }
             )
@@ -55,64 +72,102 @@ fun AntivirusScreen(
                 .padding(padding)
                 .padding(16.dp)
         ) {
-            // Status Card
-            Card(
+            // Asosiy Status Kartasi (Frosted Glass Card)
+            GlassCard(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = when {
-                        uiState.highRiskCount > 0 -> MaterialTheme.colorScheme.errorContainer
-                        else -> MaterialTheme.colorScheme.primaryContainer
-                    }
-                )
+                shape = RoundedCornerShape(24.dp),
+                backgroundColor = ObsidianSurface,
+                borderColor = statusColor.copy(alpha = 0.35f),
+                borderWidth = 1.dp
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(20.dp),
+                        .padding(vertical = 12.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Icon(
-                        imageVector = if (uiState.highRiskCount > 0) Icons.Default.Warning else Icons.Default.Shield,
-                        contentDescription = null,
-                        modifier = Modifier.size(56.dp),
-                        tint = if (uiState.highRiskCount > 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(
-                        text = if (uiState.highRiskCount > 0)
-                            "${uiState.highRiskCount} ta shubhali ilova topildi"
-                        else
-                            "Qurilma xavfsiz holatda",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp
-                    )
-                    Text(
-                        text = if (uiState.isScanning)
-                            "Skanerlanmoqda: ${uiState.currentScanningApp}"
-                        else
-                            "Barcha o'rnatilgan ilovalar tahlil qilingan",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-
                     if (uiState.isScanning) {
-                        Spacer(modifier = Modifier.height(16.dp))
+                        // Skanerlash Radar Animatsiyasi
+                        ScanningRadar(color = CyberTeal)
+                        Spacer(modifier = Modifier.height(14.dp))
+                        Text(
+                            text = "Qurilma tahlil qilinmoqda...",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp,
+                            color = CyberTeal
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = uiState.currentScanningApp.ifEmpty { "Ilovalar solishtirilmoqda..." },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1
+                        )
+                        Spacer(modifier = Modifier.height(14.dp))
                         LinearProgressIndicator(
                             progress = { uiState.scanProgress },
+                            color = CyberTeal,
+                            trackColor = ObsidianSurfaceElev,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(8.dp),
+                                .height(8.dp)
                         )
                     } else {
+                        // Tinch Holat (Himoyalangan yoki Tahdid Topilgan)
+                        Surface(
+                            shape = CircleShape,
+                            color = statusColor.copy(alpha = 0.12f),
+                            border = androidx.compose.foundation.BorderStroke(1.5.dp, statusColor.copy(alpha = 0.4f)),
+                            modifier = Modifier.size(68.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = if (uiState.highRiskCount > 0) Icons.Default.Warning else Icons.Default.Shield,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(36.dp),
+                                    tint = statusColor
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Text(
+                            text = if (uiState.highRiskCount > 0)
+                                "${uiState.highRiskCount} ta shubhali ilova topildi"
+                            else
+                                "Qurilma to'liq himoyalangan",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Zararli bank klonlari va fishing xavflari tekshirildi",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
                         Spacer(modifier = Modifier.height(16.dp))
+
                         Button(
                             onClick = { viewModel.scanAllApps() },
-                            shape = RoundedCornerShape(12.dp)
+                            shape = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = CyberTeal,
+                                contentColor = ObsidianBlack
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(50.dp)
                         ) {
                             Icon(Icons.Default.Search, contentDescription = null)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Qurilmani to'liq skanerlash")
+                            Text(
+                                text = "To'liq qayta skanerlash",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 15.sp
+                            )
                         }
                     }
                 }
@@ -120,20 +175,36 @@ fun AntivirusScreen(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            Text(
-                text = "Tahlil natijalari (${uiState.results.size})",
-                fontWeight = FontWeight.Bold,
-                fontSize = 16.sp
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "Tahlil natijalari (${uiState.results.size})",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.weight(1f))
+                Surface(
+                    shape = RoundedCornerShape(6.dp),
+                    color = ObsidianSurfaceElev
+                ) {
+                    Text(
+                        text = "SHA-256 + OEM",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                    )
+                }
+            }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 items(uiState.results, key = { it.packageName }) { result ->
-                    ScanResultItem(
+                    ModernScanResultItem(
                         result = result,
                         onTrustToggle = { viewModel.toggleTrustApp(result.packageName, result.isUserTrusted) },
                         onUninstall = { viewModel.uninstallApp(result.packageName) }
@@ -145,58 +216,132 @@ fun AntivirusScreen(
 }
 
 @Composable
-fun ScanResultItem(
+fun ScanningRadar(color: Color) {
+    val infiniteTransition = rememberInfiniteTransition(label = "radar")
+    val angle by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "radarAngle"
+    )
+
+    Box(
+        modifier = Modifier.size(90.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val center = Offset(size.width / 2f, size.height / 2f)
+            val radius = size.minDimension / 2f
+
+            drawCircle(
+                color = color.copy(alpha = 0.15f),
+                radius = radius,
+                style = Stroke(width = 1.5.dp.toPx())
+            )
+            drawCircle(
+                color = color.copy(alpha = 0.1f),
+                radius = radius * 0.6f,
+                style = Stroke(width = 1.dp.toPx())
+            )
+
+            val sweepBrush = Brush.sweepGradient(
+                0.0f to Color.Transparent,
+                0.7f to color.copy(alpha = 0.1f),
+                1.0f to color,
+                center = center
+            )
+
+            drawCircle(
+                brush = sweepBrush,
+                radius = radius,
+                style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round)
+            )
+        }
+
+        Icon(
+            imageVector = Icons.Default.Search,
+            contentDescription = null,
+            tint = color,
+            modifier = Modifier.size(32.dp)
+        )
+    }
+}
+
+@Composable
+fun ModernScanResultItem(
     result: ScanResult,
     onTrustToggle: () -> Unit,
     onUninstall: () -> Unit
 ) {
-    Card(
+    GlassCard(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+        shape = RoundedCornerShape(16.dp),
+        backgroundColor = ObsidianSurfaceElev,
+        borderColor = if (result.isSystemApp)
+            GlassBorderWhite
+        else when (result.dangerLevel) {
+            DangerLevel.SAFE -> GlassBorderTeal
+            DangerLevel.MEDIUM -> NeonAmber.copy(alpha = 0.3f)
+            DangerLevel.HIGH -> NeonCrimson.copy(alpha = 0.4f)
+        },
+        borderWidth = 1.dp
     ) {
-        Column(modifier = Modifier.padding(14.dp)) {
+        Column(modifier = Modifier.fillMaxWidth()) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(text = result.appName, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                    Text(text = result.packageName, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                    Text(
+                        text = result.appName,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = result.packageName,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
 
-                // Danger Score Badge / System App Badge
+                // Tizim Ilovasi / Xavfsizlik Nishoni
                 if (result.isSystemApp) {
-                    Box(
-                        modifier = Modifier
-                            .background(Color(0xFF2E7D32).copy(alpha = 0.15f), CircleShape)
-                            .padding(horizontal = 10.dp, vertical = 4.dp)
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = NeonEmerald.copy(alpha = 0.12f),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, NeonEmerald.copy(alpha = 0.3f))
                     ) {
                         Text(
                             text = "Tizim ilovasi / Xavfsiz",
-                            color = Color(0xFF2E7D32),
+                            color = NeonEmerald,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 12.sp
+                            fontSize = 11.sp,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                         )
                     }
                 } else {
                     val badgeColor = when (result.dangerLevel) {
-                        DangerLevel.SAFE -> Color(0xFF2E7D32)
-                        DangerLevel.MEDIUM -> Color(0xFFF57F17)
-                        DangerLevel.HIGH -> Color(0xFFD32F2F)
+                        DangerLevel.SAFE -> NeonEmerald
+                        DangerLevel.MEDIUM -> NeonAmber
+                        DangerLevel.HIGH -> NeonCrimson
                     }
 
-                    Box(
-                        modifier = Modifier
-                            .background(badgeColor.copy(alpha = 0.15f), CircleShape)
-                            .padding(horizontal = 10.dp, vertical = 4.dp)
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = badgeColor.copy(alpha = 0.12f),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, badgeColor.copy(alpha = 0.3f))
                     ) {
                         Text(
                             text = "${result.dangerScore}/100",
                             color = badgeColor,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 12.sp
+                            fontSize = 12.sp,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                         )
                     }
                 }
@@ -207,7 +352,7 @@ fun ScanResultItem(
                 Text(
                     text = "Xavfli ruxsatlar: ${result.detectedPermissions.joinToString(", ")}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error
+                    color = NeonCrimson
                 )
             }
 
@@ -217,13 +362,17 @@ fun ScanResultItem(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End
                 ) {
-                    TextButton(onClick = onTrustToggle) {
+                    OutlinedButton(
+                        onClick = onTrustToggle,
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
                         Text("Ishonaman")
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(
                         onClick = onUninstall,
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = NeonCrimson)
                     ) {
                         Text("O'chirish")
                     }

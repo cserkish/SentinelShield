@@ -54,3 +54,20 @@ val StatusDanger  = Color(0xFFC62828)   // red
 val StatusSafeBg  = Color(0xFFE8F5E9)
 val StatusWarnBg  = Color(0xFFFFF8E1)
 val StatusDangerBg = Color(0xFFFFEBEE)
+
+// ── Cyber-Security Modern UI Design System Tokens ──────────────────────────
+val CyberTeal           = Color(0xFF00E5BC) // Neon Cyber-Teal
+val CyberTealDim        = Color(0xFF00BFA5)
+val CyberTealDark       = Color(0xFF00382E)
+val ObsidianBlack       = Color(0xFF0B0F12) // Deep dark background
+val ObsidianSurface     = Color(0xFF131A1F) // Frosted card surface
+val ObsidianSurfaceElev = Color(0xFF1B252C) // Elevated frosted surface
+val GlassBorderTeal     = Color(0x3300E5BC) // Glowing teal border
+val GlassBorderWhite    = Color(0x1FFFFFFF) // Frosted glass border stroke
+
+val NeonEmerald         = Color(0xFF00E676) // Safe metric
+val NeonAmber           = Color(0xFFFFB300) // Warning metric
+val NeonCrimson         = Color(0xFFFF3366) // Danger/Malware metric
+val NeonCyan            = Color(0xFF00E5FF) // NetGuard metric
+val NeonViolet          = Color(0xFFB388FF) // AppLock metric
+
