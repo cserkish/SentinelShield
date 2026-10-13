@@ -52,13 +52,28 @@ class AppLockRepositoryImpl @Inject constructor(
         }
     }
 
+    private fun hashPin(pin: String): String {
+        val salt = "SentinelShield#AppLock#Salt_2026"
+        val digest = java.security.MessageDigest.getInstance("SHA-256")
+        val hashBytes = digest.digest((salt + pin).toByteArray(Charsets.UTF_8))
+        return hashBytes.joinToString("") { "%02x".format(it) }
+    }
+
     override suspend fun verifyPin(packageName: String, enteredPin: String): Boolean {
         val savedHash = preferences.appLockPinHash.first()
-        // Default PIN if not set: "000000"
+        val defaultHash = hashPin("000000")
+        val enteredHash = hashPin(enteredPin)
+
         return if (savedHash.isNullOrEmpty()) {
-            enteredPin == "000000"
+            java.security.MessageDigest.isEqual(
+                enteredHash.toByteArray(Charsets.UTF_8),
+                defaultHash.toByteArray(Charsets.UTF_8)
+            )
         } else {
-            enteredPin == savedHash
+            java.security.MessageDigest.isEqual(
+                enteredHash.toByteArray(Charsets.UTF_8),
+                savedHash.toByteArray(Charsets.UTF_8)
+            )
         }
     }
 

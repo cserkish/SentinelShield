@@ -60,13 +60,15 @@ class PhishingVpnService : VpnService() {
                 .setSession("SentinelShield NetGuard")
                 .addAddress("10.1.10.1", 32)
                 .addDnsServer("1.1.1.1")
-                // Only route the DNS endpoint through TUN to prevent cutting off user's regular internet
+                .addDnsServer("1.0.0.1")
+                // Only route DNS endpoints through TUN to prevent cutting off user's regular internet
                 .addRoute("1.1.1.1", 32)
+                .addRoute("1.0.0.1", 32)
 
             val pfd = builder.establish()
             if (pfd == null) {
                 Log.w(TAG, "VPN interface could not be established (prepare dialog not granted or another VPN active)")
-                stopVpn()
+                stopVpn(isUnexpected = true)
                 return
             }
 
@@ -76,7 +78,7 @@ class PhishingVpnService : VpnService() {
             serviceScope.launch {
                 val fd = pfd.fileDescriptor
                 if (fd == null || !fd.valid()) {
-                    stopVpn()
+                    stopVpn(isUnexpected = true)
                     return@launch
                 }
 
@@ -90,11 +92,9 @@ class PhishingVpnService : VpnService() {
                             val length = vpnInput.read(packet.array())
                             if (length > 0) {
                                 packet.limit(length)
-                                // Packet parsed for DNS queries if needed
                                 packet.clear()
                             }
                         } catch (e: IOException) {
-                            // Interface closed or torn down
                             break
                         }
                         delay(100)
@@ -105,11 +105,11 @@ class PhishingVpnService : VpnService() {
             }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to start VPN", e)
-            stopVpn()
+            stopVpn(isUnexpected = true)
         }
     }
 
-    private fun stopVpn() {
+    private fun stopVpn(isUnexpected: Boolean = false) {
         isRunning = false
         try {
             serviceJob.cancel()
@@ -119,7 +119,25 @@ class PhishingVpnService : VpnService() {
         } catch (e: Exception) {}
         vpnInterface = null
         stopForeground(STOP_FOREGROUND_REMOVE)
+
+        if (isUnexpected) {
+            notifyVpnDisconnected()
+        }
         stopSelf()
+    }
+
+    private fun notifyVpnDisconnected() {
+        runCatching {
+            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as? android.app.NotificationManager
+            val warningNotification = NotificationCompat.Builder(this, SentinelApp.CHANNEL_SECURITY_ALERTS)
+                .setContentTitle("NetGuard Himoyasi To'xtatildi")
+                .setContentText("Tarmoq fishing va mayner filtri o'chiq. Qayta yoqish uchun ilovaga kiring.")
+                .setSmallIcon(android.R.drawable.stat_notify_error)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setAutoCancel(true)
+                .build()
+            notificationManager?.notify(NOTIFICATION_DISCONNECTED_ID, warningNotification)
+        }
     }
 
     private fun createNotification(): Notification {
@@ -147,5 +165,6 @@ class PhishingVpnService : VpnService() {
         const val ACTION_START_FROM_BOOT = "uz.sentinel.service.VPN_START_FROM_BOOT"
         const val ACTION_STOP = "uz.sentinel.service.ACTION_STOP_VPN"
         const val NOTIFICATION_ID = 2002
+        const val NOTIFICATION_DISCONNECTED_ID = 2003
     }
 }
