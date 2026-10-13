@@ -45,10 +45,10 @@
 -keep @dagger.hilt.InstallIn class * { *; }
 -keep @dagger.Module class * { *; }
 -keep @dagger.hilt.migration.DisableInstallInCheck class * { *; }
--keepclasseswithmembernames class * {
+-keepclassmembers class * {
     @javax.inject.Inject <init>(...);
 }
--keepclasseswithmembernames class * {
+-keepclassmembers class * {
     @javax.inject.Inject <fields>;
 }
 -dontwarn dagger.**

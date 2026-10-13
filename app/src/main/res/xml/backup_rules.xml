@@ -22,8 +22,6 @@
     <!-- Bosqinchi rasmlari -->
     <exclude domain="file" path="intruder_photos" />
 
-    <!-- Cache -->
-    <exclude domain="cache" path="." />
 
     <!-- External storage -->
     <exclude domain="external" path="." />

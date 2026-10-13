@@ -12,7 +12,6 @@
         <exclude domain="sharedpref" path="." />
         <exclude domain="external" path="." />
         <exclude domain="root" path="." />
-        <exclude domain="cache" path="." />
     </cloud-backup>
 
     <device-transfer>
@@ -22,6 +21,5 @@
         <exclude domain="sharedpref" path="." />
         <exclude domain="external" path="." />
         <exclude domain="root" path="." />
-        <exclude domain="cache" path="." />
     </device-transfer>
 </data-extraction-rules>
