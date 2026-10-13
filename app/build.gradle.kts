@@ -111,9 +111,6 @@ dependencies {
     // Biometrics
     implementation(libs.biometric)
 
-    // Lottie
-    implementation(libs.lottie.compose)
-
     // Kotlin
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)

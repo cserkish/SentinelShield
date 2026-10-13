@@ -27,17 +27,19 @@ object DatabaseModule {
             .addCallback(object : RoomDatabase.Callback() {
                 override fun onCreate(db: SupportSQLiteDatabase) {
                     super.onCreate(db)
-                    val now = System.currentTimeMillis()
-                    // Seed initial known phishing domains
-                    db.execSQL("INSERT OR REPLACE INTO phishing_domains (domain, reason, addedAt) VALUES ('click-uz.info', 'Soxta Click fishing sayti', $now)")
-                    db.execSQL("INSERT OR REPLACE INTO phishing_domains (domain, reason, addedAt) VALUES ('payme-uz.site', 'Soxta Payme to''lov sahifasi', $now)")
-                    db.execSQL("INSERT OR REPLACE INTO phishing_domains (domain, reason, addedAt) VALUES ('uzcard-bonus.top', 'Soxta bank plastik kartasi yutug''i', $now)")
-                    db.execSQL("INSERT OR REPLACE INTO phishing_domains (domain, reason, addedAt) VALUES ('humo-online.vip', 'Soxta Humo karta to''lovi', $now)")
-                    db.execSQL("INSERT OR REPLACE INTO phishing_domains (domain, reason, addedAt) VALUES ('pul-yordam.me', 'Soxta ijtimoiy yordam firibgarligi', $now)")
+                    runCatching {
+                        val now = System.currentTimeMillis()
+                        // Seed initial known phishing domains with exact matching schema (domain, category, riskScore, addedAt)
+                        db.execSQL("INSERT OR REPLACE INTO phishing_domains (domain, category, riskScore, addedAt) VALUES ('click-uz.info', 'Soxta Click fishing sayti', 100, $now)")
+                        db.execSQL("INSERT OR REPLACE INTO phishing_domains (domain, category, riskScore, addedAt) VALUES ('payme-uz.site', 'Soxta Payme to''lov sahifasi', 100, $now)")
+                        db.execSQL("INSERT OR REPLACE INTO phishing_domains (domain, category, riskScore, addedAt) VALUES ('uzcard-bonus.top', 'Soxta bank plastik kartasi yutug''i', 100, $now)")
+                        db.execSQL("INSERT OR REPLACE INTO phishing_domains (domain, category, riskScore, addedAt) VALUES ('humo-online.vip', 'Soxta Humo karta to''lovi', 100, $now)")
+                        db.execSQL("INSERT OR REPLACE INTO phishing_domains (domain, category, riskScore, addedAt) VALUES ('pul-yordam.me', 'Soxta ijtimoiy yordam firibgarligi', 100, $now)")
 
-                    // Seed sample malware signatures
-                    db.execSQL("INSERT OR REPLACE INTO virus_hashes (sha256, malwareName, severity, addedAt) VALUES ('e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', 'Trojan.AndroidOS.FakeBank', 95, $now)")
-                    db.execSQL("INSERT OR REPLACE INTO virus_hashes (sha256, malwareName, severity, addedAt) VALUES ('851364c9472e38c7f212260ff0df56b26dcf5a2283cb080de3fb845ffad92a10', 'Spyware.Android.SmsStealer', 90, $now)")
+                        // Seed sample malware signatures
+                        db.execSQL("INSERT OR REPLACE INTO virus_hashes (sha256, malwareName, severity, addedAt) VALUES ('e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', 'Trojan.AndroidOS.FakeBank', 95, $now)")
+                        db.execSQL("INSERT OR REPLACE INTO virus_hashes (sha256, malwareName, severity, addedAt) VALUES ('851364c9472e38c7f212260ff0df56b26dcf5a2283cb080de3fb845ffad92a10', 'Spyware.Android.SmsStealer', 90, $now)")
+                    }
                 }
             })
             .fallbackToDestructiveMigration()

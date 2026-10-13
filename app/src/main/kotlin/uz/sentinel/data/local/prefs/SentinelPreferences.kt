@@ -31,11 +31,8 @@ class SentinelPreferences @Inject constructor(
 
     private val safePrefsFlow: Flow<Preferences> = context.dataStore.data
         .catch { exception ->
-            if (exception is IOException) {
-                emit(emptyPreferences())
-            } else {
-                throw exception
-            }
+            android.util.Log.e("SentinelPreferences", "DataStore error, emitting empty preferences", exception)
+            emit(emptyPreferences())
         }
 
     val isOnboardingCompleted: Flow<Boolean> = safePrefsFlow.map { prefs ->

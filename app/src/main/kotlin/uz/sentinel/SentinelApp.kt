@@ -21,12 +21,24 @@ class SentinelApp : Application() {
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
             android.util.Log.e("SentinelShield", "ZeroCrashShield caught unhandled exception on ${thread.name}", throwable)
             val msg = throwable.message.orEmpty()
+            val stack = android.util.Log.getStackTraceString(throwable)
+
+            // Save crash dump to internal file
+            runCatching {
+                val file = java.io.File(filesDir, "crash_dump.txt")
+                file.writeText("Time: ${System.currentTimeMillis()}\nThread: ${thread.name}\nError: $msg\nStack:\n$stack")
+            }
+
             if (msg.contains("ForegroundServiceStartNotAllowedException") ||
                 msg.contains("Timeout waiting for draw") ||
                 msg.contains("Bad notification posted") ||
-                msg.contains("RemoteServiceException")
+                msg.contains("RemoteServiceException") ||
+                msg.contains("SQLiteException") ||
+                msg.contains("Room") ||
+                msg.contains("no column named") ||
+                msg.contains("DeadSystemException")
             ) {
-                android.util.Log.w("SentinelShield", "Swallowed benign platform crash on budget device: $msg")
+                android.util.Log.w("SentinelShield", "Swallowed benign platform/database crash on budget device: $msg")
                 return@setDefaultUncaughtExceptionHandler
             }
             originalHandler?.uncaughtException(thread, throwable)

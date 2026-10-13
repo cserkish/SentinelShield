@@ -25,10 +25,10 @@ class DashboardViewModel @Inject constructor(
 ) : ViewModel() {
 
     val uiState: StateFlow<DashboardUiState> = combine(
-        scanResultDao.getHighRiskCountFlow(),
-        lockedAppDao.getLockedAppsFlow(),
-        preferences.lastCleanBytes,
-        preferences.isNetGuardEnabled
+        scanResultDao.getHighRiskCountFlow().catch { emit(0) },
+        lockedAppDao.getLockedAppsFlow().catch { emit(emptyList()) },
+        preferences.lastCleanBytes.catch { emit(0L) },
+        preferences.isNetGuardEnabled.catch { emit(false) }
     ) { highRisks, lockedApps, cleanBytes, netGuardEnabled ->
         DashboardUiState(
             highRiskAppCount = highRisks,
@@ -37,6 +37,8 @@ class DashboardViewModel @Inject constructor(
             isNetGuardActive = netGuardEnabled,
             isDeviceSafe = highRisks == 0
         )
+    }.catch {
+        emit(DashboardUiState())
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),

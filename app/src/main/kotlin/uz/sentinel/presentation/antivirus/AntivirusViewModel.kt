@@ -48,25 +48,27 @@ class AntivirusViewModel @Inject constructor(
 
     private fun loadSavedResults() {
         viewModelScope.launch {
-            scanResultDao.getAllResultsFlow().collect { entities ->
-                val results = entities.map { entity ->
-                    ScanResult(
-                        packageName = entity.packageName,
-                        appName = entity.appName,
-                        dangerScore = entity.dangerScore,
-                        dangerLevel = DangerLevel.entries.find { it.name == entity.dangerLevel } ?: DangerLevel.SAFE,
-                        detectedPermissions = entity.detectedPermissions.split(",").filter { it.isNotBlank() },
-                        isKnownMalware = entity.isKnownMalware,
-                        malwareName = entity.malwareName,
-                        isUserTrusted = entity.isUserTrusted
+            scanResultDao.getAllResultsFlow()
+                .catch { emit(emptyList()) }
+                .collect { entities ->
+                    val results = entities.map { entity ->
+                        ScanResult(
+                            packageName = entity.packageName,
+                            appName = entity.appName,
+                            dangerScore = entity.dangerScore,
+                            dangerLevel = DangerLevel.entries.find { it.name == entity.dangerLevel } ?: DangerLevel.SAFE,
+                            detectedPermissions = entity.detectedPermissions.split(",").filter { it.isNotBlank() },
+                            isKnownMalware = entity.isKnownMalware,
+                            malwareName = entity.malwareName,
+                            isUserTrusted = entity.isUserTrusted
+                        )
+                    }
+                    val highRisks = results.count { it.dangerLevel == DangerLevel.HIGH && !it.isUserTrusted }
+                    _uiState.value = _uiState.value.copy(
+                        results = results,
+                        highRiskCount = highRisks
                     )
                 }
-                val highRisks = results.count { it.dangerLevel == DangerLevel.HIGH && !it.isUserTrusted }
-                _uiState.value = _uiState.value.copy(
-                    results = results,
-                    highRiskCount = highRisks
-                )
-            }
         }
     }
 
