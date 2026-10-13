@@ -1,15 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Base application theme. -->
-    <style name="Theme.SentinelShield" parent="android:Theme.Material.Light.NoActionBar">
-        <item name="android:statusBarColor">@android:color/transparent</item>
-        <item name="android:navigationBarColor">@android:color/transparent</item>
-    </style>
-
-    <!-- Splash Screen theme for Android 12+ -->
-    <style name="Theme.SentinelShield.Splash" parent="Theme.SplashScreen">
-        <item name="windowSplashScreenBackground">#004D40</item>
-        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
-        <item name="postSplashScreenTheme">@style/Theme.SentinelShield</item>
+    <!-- Base application theme: Clean, modern dark theme matching SentinelShield brand -->
+    <style name="Theme.SentinelShield" parent="android:Theme.Material.NoActionBar">
+        <item name="android:statusBarColor">#0D1B2A</item>
+        <item name="android:navigationBarColor">#0D1B2A</item>
+        <item name="android:windowBackground">#0D1B2A</item>
+        <item name="android:windowNoTitle">true</item>
     </style>
 </resources>
