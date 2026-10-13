@@ -16,7 +16,11 @@ class HeuristicEngine @Inject constructor() {
         val flaggedPermissions = mutableListOf<String>()
 
         // Analyze dangerous permission combinations
-        if (permissions.contains("android.permission.SEND_SMS") || permissions.contains("android.permission.RECEIVE_SMS")) {
+        val hasSms = permissions.contains("android.permission.SEND_SMS") || permissions.contains("android.permission.RECEIVE_SMS") || permissions.contains("android.permission.READ_SMS")
+        val hasOverlay = permissions.contains("android.permission.SYSTEM_ALERT_WINDOW")
+        val hasInternet = permissions.contains("android.permission.INTERNET")
+
+        if (hasSms) {
             score += 25
             flaggedPermissions.add("SMS yuborish/o'qish")
         }
@@ -28,7 +32,7 @@ class HeuristicEngine @Inject constructor() {
             score += 15
             flaggedPermissions.add("Kontaktlar ro'yxatiga kirish")
         }
-        if (permissions.contains("android.permission.SYSTEM_ALERT_WINDOW")) {
+        if (hasOverlay) {
             score += 15
             flaggedPermissions.add("Ekranni to'sib qo'yish (Overlay)")
         }
@@ -36,16 +40,30 @@ class HeuristicEngine @Inject constructor() {
             score += 10
             flaggedPermissions.add("Kamera ruxsati")
         }
+        if (permissions.contains("android.permission.REQUEST_INSTALL_PACKAGES")) {
+            score += 20
+            flaggedPermissions.add("Boshqa ilovalarni yashirin o'rnatish (Dropper)")
+        }
+        if (permissions.contains("android.permission.BIND_ACCESSIBILITY_SERVICE")) {
+            score += 35
+            flaggedPermissions.add("Maxsus imkoniyatlarni boshqarish (Ekran va parollarni o'qish)")
+        }
         if (permissions.contains("android.permission.RECEIVE_BOOT_COMPLETED")) {
             score += 5
             flaggedPermissions.add("Telefon yonganda ishga tushish")
+        }
+
+        // 🚨 High-Confidence Banking Trojan Signature Combination (SMS + Overlay/Accessibility + Internet)
+        if (hasSms && hasOverlay && hasInternet) {
+            score = maxOf(score + 25, 85)
+            flaggedPermissions.add("⚠️ Bank ilovalarini to'sib OTP o'g'irlash xavfi (Banker)")
         }
 
         // Check if installed from official Google Play Store
         val isOfficialStore = isInstalledFromGooglePlay(packageInfo.packageName, packageManager)
         if (!isOfficialStore && score > 0) {
             // Apply multiplier for sideloaded apps requesting suspicious permissions
-            score = (score * 1.4).toInt()
+            score = (score * 1.35).toInt()
         }
 
         val finalScore = score.coerceIn(0, 100)

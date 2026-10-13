@@ -34,6 +34,15 @@ class JunkScannerRepositoryImpl @Inject constructor(
             }
         }
 
+        // 3. Obsolete thumbnail cache (.thumbnails)
+        runCatching {
+            val dcim = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM)
+            val thumbDir = File(dcim, ".thumbnails")
+            if (thumbDir.exists() && thumbDir.isDirectory) {
+                scanDirectoryForJunk(thumbDir, JunkCategory.THUMBNAILS, junkList)
+            }
+        }
+
         junkList
     }
 
@@ -109,11 +118,15 @@ class JunkScannerRepositoryImpl @Inject constructor(
     }
 
     private fun isSafeToDelete(file: File): Boolean {
-        val path = file.absolutePath.lowercase()
+        val normalizedPath = file.absolutePath.replace('\\', '/').lowercase()
+        // Allow cleaning thumbnail cache even inside DCIM
+        if (normalizedPath.contains("/.thumbnails")) {
+            return true
+        }
         // NEVER touch protected personal directories
-        val forbiddenPaths = listOf("dcim", "pictures", "movies", "music", "documents", "telegram", "whatsapp")
+        val forbiddenPaths = listOf("/dcim/", "/pictures/", "/movies/", "/music/", "/documents/", "/telegram/", "/whatsapp/")
         for (forbidden in forbiddenPaths) {
-            if (path.contains("/$forbidden/")) {
+            if (normalizedPath.contains(forbidden)) {
                 return false
             }
         }

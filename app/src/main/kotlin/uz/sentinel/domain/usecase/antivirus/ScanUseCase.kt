@@ -41,6 +41,18 @@ class ScanUseCase @Inject constructor(
         val apkPath = appInfo?.sourceDir
         val isSystemApp = (appInfo?.flags ?: 0) and android.content.pm.ApplicationInfo.FLAG_SYSTEM != 0
 
+        // Self-protection: SentinelShield itself is always safe
+        if (packageName == context.packageName) {
+            return@withContext ScanResult(
+                packageName = packageName,
+                appName = appName,
+                dangerScore = 0,
+                dangerLevel = DangerLevel.SAFE,
+                detectedPermissions = emptyList(),
+                isKnownMalware = false
+            )
+        }
+
         // 1. Calculate SHA-256 of user-installed APK (skip read-only system apps to preserve CPU/battery on budget devices)
         val apkHash = if (!isSystemApp && apkPath != null) {
             calculateSha256(apkPath)
