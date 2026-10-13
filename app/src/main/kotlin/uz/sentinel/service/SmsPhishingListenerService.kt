@@ -20,7 +20,7 @@ class SmsPhishingListenerService : NotificationListenerService() {
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
-    // Regex to match URLs in notification texts
+    // Matn ichidagi havolalarni (URL) topish uchun regex
     private val urlPattern = Pattern.compile(
         "https?://(?:www\\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b(?:[-a-zA-Z0-9()@:%_+.~#?&/=]*)"
     )
@@ -36,7 +36,7 @@ class SmsPhishingListenerService : NotificationListenerService() {
         val text = extras.getCharSequence("android.text")?.toString() ?: ""
         val fullMessage = "$title $text".lowercase()
 
-        // Check if message contains URLs and suspicious financial keywords
+        // Xabarda havola va shubhali moliyaviy so'zlar borligini tekshirish
         val matcher = urlPattern.matcher(fullMessage)
         if (matcher.find()) {
             val extractedUrl = matcher.group()
@@ -47,7 +47,8 @@ class SmsPhishingListenerService : NotificationListenerService() {
                     val domain = extractDomain(extractedUrl)
                     val isPhishing = phishingRepository.isPhishingDomain(domain)
 
-                    if (isPhishing || !isLegitimateDomain(domain)) {
+                    // Faqat haqiqiy soxta/pirat fishing domeni bo'lsagina ogohlantirish (soxta signalni oldini olish)
+                    if (isPhishing) {
                         showPhishingAlert(domain)
                     }
                 }
@@ -62,11 +63,6 @@ class SmsPhishingListenerService : NotificationListenerService() {
         } catch (e: Exception) {
             url
         }
-    }
-
-    private fun isLegitimateDomain(domain: String): Boolean {
-        val safeDomains = listOf("click.uz", "payme.uz", "uzcard.uz", "humocard.uz", "gov.uz")
-        return safeDomains.any { domain.endsWith(it) }
     }
 
     private fun showPhishingAlert(domain: String) {

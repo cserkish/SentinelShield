@@ -5,5 +5,6 @@ data class AppPermissionInfo(
     val appName: String,
     val grantedDangerousPerms: List<String>,
     val lastUsedTime: Long,           // epoch ms; 0 if never / unknown
-    val hasBackgroundLocation: Boolean
+    val hasBackgroundLocation: Boolean,
+    val isSystemApp: Boolean = false
 )

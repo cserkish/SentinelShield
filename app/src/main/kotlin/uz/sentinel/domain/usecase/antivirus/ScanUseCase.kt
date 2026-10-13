@@ -1,7 +1,6 @@
 package uz.sentinel.domain.usecase.antivirus
 
 import android.content.Context
-import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -32,16 +31,17 @@ class ScanUseCase @Inject constructor(
                 dangerScore = 0,
                 dangerLevel = DangerLevel.SAFE,
                 detectedPermissions = emptyList(),
-                isKnownMalware = false
+                isKnownMalware = false,
+                isSystemApp = false
             )
         }
 
         val appInfo = packageInfo.applicationInfo
         val appName = appInfo?.loadLabel(packageManager)?.toString() ?: packageName
         val apkPath = appInfo?.sourceDir
-        val isSystemApp = (appInfo?.flags ?: 0) and android.content.pm.ApplicationInfo.FLAG_SYSTEM != 0
+        val isSystem = heuristicEngine.isSystemOrOemApp(packageInfo)
 
-        // Self-protection: SentinelShield itself is always safe
+        // O'zimizning ilovamiz (SentinelShield) har doim xavfsiz
         if (packageName == context.packageName) {
             return@withContext ScanResult(
                 packageName = packageName,
@@ -49,23 +49,37 @@ class ScanUseCase @Inject constructor(
                 dangerScore = 0,
                 dangerLevel = DangerLevel.SAFE,
                 detectedPermissions = emptyList(),
-                isKnownMalware = false
+                isKnownMalware = false,
+                isSystemApp = false
             )
         }
 
-        // 1. Calculate SHA-256 of user-installed APK (skip read-only system apps to preserve CPU/battery on budget devices)
-        val apkHash = if (!isSystemApp && apkPath != null) {
+        // Tizim va ishonchli OEM (Samsung, Google, Xiaomi va h.k.) ilovalari doimo XAVFSIZ (0 ball)
+        if (isSystem) {
+            return@withContext ScanResult(
+                packageName = packageName,
+                appName = appName,
+                dangerScore = 0,
+                dangerLevel = DangerLevel.SAFE,
+                detectedPermissions = emptyList(),
+                isKnownMalware = false,
+                isSystemApp = true
+            )
+        }
+
+        // 1. Foydalanuvchi o'rnatgan APK lar uchun SHA-256 heshini hisoblash
+        val apkHash = if (apkPath != null) {
             calculateSha256(apkPath)
         } else {
             ""
         }
 
-        // 2. Check against offline malware signature database
+        // 2. Ofline viruslar xesh bazasidan qidirish
         val knownMalwareName = if (apkHash.isNotEmpty()) {
             hashRepository.findMalware(apkHash)
         } else null
 
-        // 3. Heuristic permission analysis
+        // 3. Evristik ruxsatlar tahlili
         val heuristicResult = heuristicEngine.analyze(packageInfo, packageManager)
 
         val isKnownMalware = knownMalwareName != null
@@ -79,7 +93,8 @@ class ScanUseCase @Inject constructor(
             dangerLevel = finalLevel,
             detectedPermissions = heuristicResult.flaggedPermissions,
             isKnownMalware = isKnownMalware,
-            malwareName = knownMalwareName
+            malwareName = knownMalwareName,
+            isSystemApp = false
         )
     }
 

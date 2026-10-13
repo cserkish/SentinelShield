@@ -114,14 +114,32 @@ class PermissionAuditRepositoryImpl @Inject constructor(
             val hasBackground = android.Manifest.permission.ACCESS_BACKGROUND_LOCATION in grantedDangerous
             val lastUsed = resolveLastUsed(appOps, pkgInfo.packageName, appInfo.uid, grantedDangerous)
 
+            val appFlags = appInfo.flags
+            val isSystem = (appFlags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0 ||
+                    (appFlags and android.content.pm.ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0 ||
+                    isTrustedOemPackage(pkgInfo.packageName)
+
             AppPermissionInfo(
                 packageName           = pkgInfo.packageName,
                 appName               = appName,
                 grantedDangerousPerms = grantedDangerous,
                 lastUsedTime          = lastUsed,
-                hasBackgroundLocation = hasBackground
+                hasBackgroundLocation = hasBackground,
+                isSystemApp           = isSystem
             )
         }.sortedByDescending { it.lastUsedTime }
+    }
+
+    private val oemPrefixes = listOf(
+        "com.samsung.", "com.sec.", "com.google.android.", "com.android.",
+        "com.miui.", "com.xiaomi.", "com.huawei.", "com.honor.",
+        "com.coloros.", "com.oppo.", "com.vivo.", "com.transsion.",
+        "com.oneplus.", "com.meizu."
+    )
+
+    private fun isTrustedOemPackage(packageName: String): Boolean {
+        val pkg = packageName.lowercase()
+        return oemPrefixes.any { pkg.startsWith(it) }
     }
 
     /**

@@ -11,6 +11,7 @@ package uz.sentinel.domain.model
  * @param isKnownMalware     SHA-256 hash viruslar bazasida topilganmi
  * @param malwareName        Topilgan zararli dastur nomi (null bo'lishi mumkin)
  * @param isUserTrusted      Foydalanuvchi bu ilovani "ishonchli" deb belgilaganmi
+ * @param isSystemApp        OEM yoki Android tizim ilovasi ekanligi
  */
 data class ScanResult(
     val packageName: String,
@@ -20,7 +21,8 @@ data class ScanResult(
     val detectedPermissions: List<String>,
     val isKnownMalware: Boolean,
     val malwareName: String? = null,
-    val isUserTrusted: Boolean = false
+    val isUserTrusted: Boolean = false,
+    val isSystemApp: Boolean = false
 )
 
 /**

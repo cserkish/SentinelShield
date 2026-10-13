@@ -12,22 +12,49 @@ class PhishingRepositoryImpl @Inject constructor(
     private val dao: PhishingDomainDao
 ) : PhishingRepository {
 
+    // Himoya qilinadigan brendlar (soxtalashtirish, typosquatting va pirat saytlarni ushlash uchun)
     private val targetBrands = listOf(
-        "uzcard", "click", "payme", "humo", "hamkorbank",
-        "tbcbank", "kapitalbank", "anorbank", "ipotekabank", "agrobank"
+        "payme", "paycom", "click", "uzcard", "humo", "hamkorbank",
+        "tbcbank", "kapitalbank", "anorbank", "ipotekabank", "agrobank",
+        "sqb", "xalqbanki", "asakabank", "alofabank", "infinbank", "trustbank"
     )
 
-    private val officialBankDomains = setOf(
-        "click.uz", "payme.uz", "uzcard.uz", "humo.uz", "humocard.uz",
-        "hamkorbank.uz", "tbcbank.uz", "kapitalbank.uz", "anorbank.uz",
-        "ipotekabank.uz", "agrobank.uz", "nbu.uz", "sqb.uz", "xalqbanki.uz",
-        "asaka.uz", "asakabank.uz", "alofabank.uz", "infinbank.uz", "trustbank.uz"
-    )
+    // Rasmiy, qonuniy domenlar va ularning barcha subdomenlari (ULTRA WHITELIST)
+    private val officialWhitelistedDomains = setOf(
+        // Payme / Paycom ekosistemasi
+        "payme.uz", "paycom.uz", "payme.cloud", "paycom.network", "payme.info",
 
-    private val globalWhitelistedDomains = setOf(
+        // Click ekosistemasi
+        "click.uz", "click.cloud",
+
+        // Uzcard & Humo
+        "uzcard.uz", "plum.uz", "humo.uz", "humocard.uz", "smartbank.uz",
+
+        // Markaziy Bank va Davlat xizmatlari
+        "cbu.uz", "my.gov.uz", "gov.uz", "egov.uz", "id.gov.uz", "oneid.uz",
+        "soliq.uz", "lex.uz", "mf.uz", "stat.uz",
+
+        // O'zbekistonning barcha rasmiy banklari
+        "nbu.uz", "tbcbank.uz", "kapitalbank.uz", "hamkorbank.uz", "anorbank.uz",
+        "ipotekabank.uz", "agrobank.uz", "sqb.uz", "xalqbanki.uz", "asaka.uz",
+        "asakabank.uz", "alofabank.uz", "infinbank.uz", "trustbank.uz", "mkbank.uz",
+        "turonbank.uz", "davrbank.uz", "tengebank.uz", "ziraatbank.uz", "octobank.uz",
+        "garantbank.uz", "hayotbank.uz", "apexbank.uz", "poytaxtbank.uz", "yangibank.uz",
+        "madadinvestbank.uz", "asiaalliancebank.uz", "ravnaqbank.uz", "aab.uz", "saderatbank.uz",
+
+        // Ishonchli global infratuzilma servislari (soxta signal bermaslik uchun)
+        "google.com", "googleapis.com", "gstatic.com", "googleusercontent.com", "firebaseio.com",
+        "apple.com", "icloud.com", "cloudflare.com", "one.one.one.one",
+        "telegram.org", "t.me", "yandex.uz", "yandex.ru", "ya.ru",
         "clickup.com", "clickhouse.com", "doubleclick.net", "clickfunnels.com",
         "clickbank.com", "humblebundle.com", "humor.com"
     )
+
+    private fun isOfficialTrustedDomain(domain: String): Boolean {
+        return officialWhitelistedDomains.any { official ->
+            domain == official || domain.endsWith(".$official")
+        }
+    }
 
     override suspend fun isPhishingDomain(domain: String): Boolean {
         val cleanDomain = domain.lowercase().trim()
@@ -35,44 +62,41 @@ class PhishingRepositoryImpl @Inject constructor(
             .removePrefix("https://")
             .substringBefore("/")
             .substringBefore(":")
+            .substringBefore("?")
+            .substringBefore("#")
+            .removeSuffix(".")
 
         if (cleanDomain.isBlank() || !cleanDomain.contains(".")) return false
 
-        // 1. Direct match in local DB
+        // 1. QAT'IY OQ RO'YXAT (Rasmiy Payme, Paycom, Click va banklarning o'zi va subdomenlari doimo XAVFSIZ)
+        if (isOfficialTrustedDomain(cleanDomain)) {
+            return false // Original rasmiy servis! Hech qanday soxta ogohlantirish berilmaydi.
+        }
+
+        // 2. Lokal ma'lumotlar bazasidagi qora ro'yxat (Blocklist DB)
         if (dao.findDomain(cleanDomain) != null) return true
         if (dao.matchSubdomain(cleanDomain) != null) return true
 
-        // 2. Whitelist checks
-        if (officialBankDomains.any { cleanDomain == it || cleanDomain.endsWith(".$it") }) {
-            return false
-        }
-        if (globalWhitelistedDomains.any { cleanDomain == it || cleanDomain.endsWith(".$it") }) {
-            return false
-        }
-
-        // Extract domain labels (e.g., "auth.click-pay.xyz" -> ["auth", "click-pay", "xyz"])
+        // 3. PIRAT / SOXTA (TYPOSQUATTING & FAKE BANK / PIRATE PAYME) ANIQLASH
         val labels = cleanDomain.split(".").filter { it.isNotBlank() }
         if (labels.size < 2) return false
         val sld = if (labels.size >= 2) labels[labels.size - 2] else labels[0]
         val normalizedSld = sld.replace("1", "l").replace("0", "o").replace("rn", "m").replace("vv", "w")
 
-        // 3. Typosquatting & Fake Bank Detection
         for (brand in targetBrands) {
-            // Check if any label is exactly equal to the brand or contains hyphenated brand (e.g. click-login, payme-uz)
+            // Rasmiy oq ro'yxatdan o'tmagan bo'lsa-yu, lekin brend nomidan foydalansa (masalan: payme-uz.com, payme-bonus.ru, auth-click.top)
             for (label in labels) {
                 if (label == brand || label.startsWith("$brand-") || label.endsWith("-$brand") || label.contains("-$brand-")) {
-                    return true
+                    return true // Pirat / Soxta brend aniqlandi!
                 }
             }
 
-            // Levenshtein distance check on SLD (catches cl1ck, payrne, uzkard, humo0)
+            // Levenshtein va homoglyph tahlili (masalan: cl1ck, payrne, uzkard)
             if (sld.length in (brand.length - 1)..(brand.length + 1)) {
-                // If homoglyph normalized SLD equals brand (e.g. cl1ck -> click, payrne -> payme)
                 if (normalizedSld == brand && sld != brand) {
                     return true
                 }
 
-                // If edit distance is 1 (e.g. paym.xyz, uzkard.com, clickk.site)
                 val dist = levenshteinDistance(normalizedSld, brand)
                 if (dist == 1) {
                     return true

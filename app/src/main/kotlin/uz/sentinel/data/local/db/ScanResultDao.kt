@@ -12,7 +12,18 @@ interface ScanResultDao {
     @Query("SELECT * FROM scan_results WHERE packageName = :packageName LIMIT 1")
     suspend fun getResult(packageName: String): ScanResultEntity?
 
-    @Query("SELECT COUNT(*) FROM scan_results WHERE dangerScore >= 61 AND isUserTrusted = 0")
+    @Query("""
+        SELECT COUNT(*) FROM scan_results 
+        WHERE dangerScore >= 61 
+          AND isUserTrusted = 0 
+          AND packageName NOT LIKE 'com.samsung.%' 
+          AND packageName NOT LIKE 'com.sec.%' 
+          AND packageName NOT LIKE 'com.google.android.%' 
+          AND packageName NOT LIKE 'com.android.%' 
+          AND packageName NOT LIKE 'com.miui.%' 
+          AND packageName NOT LIKE 'com.xiaomi.%'
+          AND packageName NOT LIKE 'com.huawei.%'
+    """)
     fun getHighRiskCountFlow(): Flow<Int>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)

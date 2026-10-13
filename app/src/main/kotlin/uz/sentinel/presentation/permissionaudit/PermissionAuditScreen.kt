@@ -122,7 +122,24 @@ fun PermissionAppRow(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(text = app.appName, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(text = app.appName, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                        if (app.isSystemApp) {
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Box(
+                                modifier = Modifier
+                                    .background(Color(0xFF2E7D32).copy(alpha = 0.15f), RoundedCornerShape(6.dp))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = "Tizim ilovasi",
+                                    color = Color(0xFF2E7D32),
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 10.sp
+                                )
+                            }
+                        }
+                    }
                     Text(text = app.packageName, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                 }
                 IconButton(onClick = onOpenSettings) {
@@ -135,7 +152,7 @@ fun PermissionAppRow(
             Text(
                 text = "Berilgan ruxsatlar: ${app.grantedDangerousPerms.joinToString(", ")}",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error
+                color = if (app.isSystemApp) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error
             )
         }
     }

@@ -1,5 +1,6 @@
 package uz.sentinel.domain.usecase.antivirus
 
+import android.content.pm.ApplicationInfo
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.os.Build
@@ -10,13 +11,68 @@ import javax.inject.Singleton
 @Singleton
 class HeuristicEngine @Inject constructor() {
 
+    private val trustedOemPrefixes = listOf(
+        "com.samsung.",
+        "com.sec.",
+        "com.google.android.",
+        "com.android.",
+        "com.miui.",
+        "com.xiaomi.",
+        "com.huawei.",
+        "com.honor.",
+        "com.coloros.",
+        "com.oppo.",
+        "com.vivo.",
+        "com.transsion.",
+        "com.oneplus.",
+        "com.meizu."
+    )
+
+    private val officialStorePackages = setOf(
+        "com.android.vending",                  // Google Play Store
+        "com.sec.android.app.samsungapps",      // Samsung Galaxy Store
+        "com.xiaomi.mipicks",                   // Xiaomi GetApps
+        "com.huawei.appmarket",                 // Huawei AppGallery
+        "com.oppo.market",                      // Oppo App Market
+        "com.vivo.appstore",                    // Vivo App Store
+        "ru.vk.store"                           // RuStore
+    )
+
+    fun isTrustedOemPackage(packageName: String): Boolean {
+        val pkg = packageName.lowercase()
+        return trustedOemPrefixes.any { pkg.startsWith(it) }
+    }
+
+    fun isSystemOrOemApp(packageInfo: PackageInfo): Boolean {
+        val appInfo = packageInfo.applicationInfo
+        val flags = appInfo?.flags ?: 0
+        val isSystem = (flags and ApplicationInfo.FLAG_SYSTEM) != 0 ||
+                (flags and ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0
+        if (isSystem) return true
+
+        return isTrustedOemPackage(packageInfo.packageName)
+    }
+
     fun analyze(packageInfo: PackageInfo, packageManager: PackageManager): HeuristicResult {
+        // Tizim va rasmiy OEM ilovalari uchun avtomatik 0 ball va XAVFSIZ (False Positive oldini olish)
+        if (isSystemOrOemApp(packageInfo)) {
+            return HeuristicResult(
+                dangerScore = 0,
+                dangerLevel = DangerLevel.SAFE,
+                flaggedPermissions = emptyList(),
+                isOfficialStore = true,
+                isSystemApp = true
+            )
+        }
+
         val permissions = packageInfo.requestedPermissions?.toList() ?: emptyList()
         var score = 0
         val flaggedPermissions = mutableListOf<String>()
 
-        // Analyze dangerous permission combinations
-        val hasSms = permissions.contains("android.permission.SEND_SMS") || permissions.contains("android.permission.RECEIVE_SMS") || permissions.contains("android.permission.READ_SMS")
+        // Foydalanuvchi o'rnatgan ilovalar uchun xavfli ruxsatlar kombinatsiyasini tahlil qilish
+        val hasSms = permissions.contains("android.permission.SEND_SMS") ||
+                permissions.contains("android.permission.RECEIVE_SMS") ||
+                permissions.contains("android.permission.READ_SMS")
         val hasOverlay = permissions.contains("android.permission.SYSTEM_ALERT_WINDOW")
         val hasInternet = permissions.contains("android.permission.INTERNET")
 
@@ -53,16 +109,16 @@ class HeuristicEngine @Inject constructor() {
             flaggedPermissions.add("Telefon yonganda ishga tushish")
         }
 
-        // 🚨 High-Confidence Banking Trojan Signature Combination (SMS + Overlay/Accessibility + Internet)
+        // 🚨 Haqiqiy Bank Troyani imzosi (Faqat norasmiy uchinchi tomon ilovalarida)
         if (hasSms && hasOverlay && hasInternet) {
             score = maxOf(score + 25, 85)
             flaggedPermissions.add("⚠️ Bank ilovalarini to'sib OTP o'g'irlash xavfi (Banker)")
         }
 
-        // Check if installed from official Google Play Store
-        val isOfficialStore = isInstalledFromGooglePlay(packageInfo.packageName, packageManager)
+        // Rasmiy do'konlar (Google Play, Galaxy Store, GetApps va h.k.) tekshiruvi
+        val isOfficialStore = isInstalledFromOfficialStore(packageInfo.packageName, packageManager)
         if (!isOfficialStore && score > 0) {
-            // Apply multiplier for sideloaded apps requesting suspicious permissions
+            // Tashqi manbalardan (APK) yuklangan shubhali ilovalar uchun koeffitsient
             score = (score * 1.35).toInt()
         }
 
@@ -77,11 +133,12 @@ class HeuristicEngine @Inject constructor() {
             dangerScore = finalScore,
             dangerLevel = level,
             flaggedPermissions = flaggedPermissions,
-            isOfficialStore = isOfficialStore
+            isOfficialStore = isOfficialStore,
+            isSystemApp = false
         )
     }
 
-    private fun isInstalledFromGooglePlay(packageName: String, packageManager: PackageManager): Boolean {
+    private fun isInstalledFromOfficialStore(packageName: String, packageManager: PackageManager): Boolean {
         return try {
             val installer = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 packageManager.getInstallSourceInfo(packageName).installingPackageName
@@ -89,7 +146,7 @@ class HeuristicEngine @Inject constructor() {
                 @Suppress("DEPRECATION")
                 packageManager.getInstallerPackageName(packageName)
             }
-            installer == "com.android.vending"
+            installer in officialStorePackages
         } catch (e: Exception) {
             false
         }
@@ -100,5 +157,6 @@ data class HeuristicResult(
     val dangerScore: Int,
     val dangerLevel: DangerLevel,
     val flaggedPermissions: List<String>,
-    val isOfficialStore: Boolean
+    val isOfficialStore: Boolean,
+    val isSystemApp: Boolean = false
 )

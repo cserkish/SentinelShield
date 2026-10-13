@@ -166,28 +166,43 @@ fun ScanResultItem(
                     Text(text = result.packageName, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                 }
 
-                // Danger Score Badge
-                val badgeColor = when (result.dangerLevel) {
-                    DangerLevel.SAFE -> Color(0xFF2E7D32)
-                    DangerLevel.MEDIUM -> Color(0xFFF57F17)
-                    DangerLevel.HIGH -> Color(0xFFD32F2F)
-                }
+                // Danger Score Badge / System App Badge
+                if (result.isSystemApp) {
+                    Box(
+                        modifier = Modifier
+                            .background(Color(0xFF2E7D32).copy(alpha = 0.15f), CircleShape)
+                            .padding(horizontal = 10.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = "Tizim ilovasi / Xavfsiz",
+                            color = Color(0xFF2E7D32),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp
+                        )
+                    }
+                } else {
+                    val badgeColor = when (result.dangerLevel) {
+                        DangerLevel.SAFE -> Color(0xFF2E7D32)
+                        DangerLevel.MEDIUM -> Color(0xFFF57F17)
+                        DangerLevel.HIGH -> Color(0xFFD32F2F)
+                    }
 
-                Box(
-                    modifier = Modifier
-                        .background(badgeColor.copy(alpha = 0.15f), CircleShape)
-                        .padding(horizontal = 10.dp, vertical = 4.dp)
-                ) {
-                    Text(
-                        text = "${result.dangerScore}/100",
-                        color = badgeColor,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 12.sp
-                    )
+                    Box(
+                        modifier = Modifier
+                            .background(badgeColor.copy(alpha = 0.15f), CircleShape)
+                            .padding(horizontal = 10.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = "${result.dangerScore}/100",
+                            color = badgeColor,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp
+                        )
+                    }
                 }
             }
 
-            if (result.detectedPermissions.isNotEmpty()) {
+            if (!result.isSystemApp && result.detectedPermissions.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = "Xavfli ruxsatlar: ${result.detectedPermissions.joinToString(", ")}",
@@ -196,7 +211,7 @@ fun ScanResultItem(
                 )
             }
 
-            if (result.dangerLevel == DangerLevel.HIGH && !result.isUserTrusted) {
+            if (!result.isSystemApp && result.dangerLevel == DangerLevel.HIGH && !result.isUserTrusted) {
                 Spacer(modifier = Modifier.height(10.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
