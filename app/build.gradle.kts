@@ -11,12 +11,21 @@ android {
     namespace = "uz.sentinel.sentinelshield"
     compileSdk = 35
 
+    signingConfigs {
+        create("release") {
+            storeFile = file("sentinel.keystore")
+            storePassword = "sentinelshieldpass"
+            keyAlias = "sentinelshield"
+            keyPassword = "sentinelshieldpass"
+        }
+    }
+
     defaultConfig {
         applicationId = "uz.sentinel.sentinelshield"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         // Room schema export
@@ -35,11 +44,12 @@ android {
                 getDefaultProguardFile("proguard-android.txt"),
                 "proguard-rules.pro"
             )
-            signingConfig = signingConfigs.getByName("debug") // Replace with release config
+            signingConfig = signingConfigs.getByName("release")
         }
         debug {
             isMinifyEnabled = false
             applicationIdSuffix = ".debug"
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 
