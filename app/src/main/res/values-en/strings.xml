@@ -27,5 +27,5 @@
     <string name="netguard_title">NetGuard Shield</string>
     <string name="permissions_title">Permission Auditor</string>
     <string name="brand_stability_title">Device Stability</string>
-    <string name="cleaner_cache">Cache & residual files</string>
+    <string name="cleaner_cache">Cache &amp; residual files</string>
 </resources>
