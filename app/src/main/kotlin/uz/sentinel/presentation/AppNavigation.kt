@@ -12,23 +12,26 @@ import uz.sentinel.data.local.prefs.SentinelPreferences
 import uz.sentinel.presentation.antivirus.AntivirusScreen
 import uz.sentinel.presentation.antivirus.AntivirusViewModel
 import uz.sentinel.presentation.applock.AppLockListScreen
+import uz.sentinel.presentation.applock.IntruderPhotosScreen
+import uz.sentinel.presentation.applock.IntruderPhotosViewModel
+import uz.sentinel.presentation.appmanager.AppUninstallScreen
+import uz.sentinel.presentation.appmanager.AppUninstallViewModel
 import uz.sentinel.presentation.cleaner.CleanerScreen
 import uz.sentinel.presentation.cleaner.CleanerViewModel
-import uz.sentinel.presentation.dashboard.MainDashboard
+import uz.sentinel.presentation.cleaner.StorageMigrationScreen
+import uz.sentinel.presentation.cleaner.StorageMigrationViewModel
 import uz.sentinel.presentation.dashboard.DashboardViewModel
+import uz.sentinel.presentation.dashboard.MainDashboard
+import uz.sentinel.presentation.gamebooster.GameBoosterScreen
+import uz.sentinel.presentation.gamebooster.GameBoosterViewModel
 import uz.sentinel.presentation.netguard.NetGuardScreen
 import uz.sentinel.presentation.netguard.NetGuardViewModel
 import uz.sentinel.presentation.onboarding.OnboardingScreen
 import uz.sentinel.presentation.permissionaudit.PermissionAuditScreen
 import uz.sentinel.presentation.permissionaudit.PermissionAuditViewModel
 import uz.sentinel.presentation.settings.StabilityGuideScreen
-
-import uz.sentinel.presentation.applock.IntruderPhotosScreen
-import uz.sentinel.presentation.applock.IntruderPhotosViewModel
-import uz.sentinel.presentation.appmanager.AppUninstallScreen
-import uz.sentinel.presentation.appmanager.AppUninstallViewModel
-import uz.sentinel.presentation.cleaner.StorageMigrationScreen
-import uz.sentinel.presentation.cleaner.StorageMigrationViewModel
+import uz.sentinel.presentation.wifisecurity.WifiSecurityScreen
+import uz.sentinel.presentation.wifisecurity.WifiSecurityViewModel
 
 sealed class Screen(val route: String) {
     object Onboarding : Screen("onboarding")
@@ -42,13 +45,16 @@ sealed class Screen(val route: String) {
     object StabilityGuide : Screen("stability_guide")
     object AppUninstall : Screen("app_uninstall")
     object StorageMigration : Screen("storage_migration")
+    object GameBooster : Screen("game_booster")
+    object WifiSecurity : Screen("wifi_security")
 }
 
 @Composable
 fun AppNavigation(
     startDestination: String,
     preferences: SentinelPreferences,
-    lockedAppDao: LockedAppDao
+    lockedAppDao: LockedAppDao,
+    onLanguageChanged: () -> Unit = {}
 ) {
     val navController = rememberNavController()
     val scope = rememberCoroutineScope()
@@ -74,13 +80,17 @@ fun AppNavigation(
             val viewModel: DashboardViewModel = hiltViewModel()
             MainDashboard(
                 viewModel = viewModel,
+                preferences = preferences,
                 onNavigateToAntivirus = { navController.navigate(Screen.Antivirus.route) },
                 onNavigateToCleaner = { navController.navigate(Screen.Cleaner.route) },
                 onNavigateToAppLock = { navController.navigate(Screen.AppLock.route) },
                 onNavigateToNetGuard = { navController.navigate(Screen.NetGuard.route) },
                 onNavigateToPermissions = { navController.navigate(Screen.PermissionAudit.route) },
                 onNavigateToStability = { navController.navigate(Screen.StabilityGuide.route) },
-                onNavigateToAppUninstall = { navController.navigate(Screen.AppUninstall.route) }
+                onNavigateToAppUninstall = { navController.navigate(Screen.AppUninstall.route) },
+                onNavigateToGameBooster = { navController.navigate(Screen.GameBooster.route) },
+                onNavigateToWifiSecurity = { navController.navigate(Screen.WifiSecurity.route) },
+                onLanguageChanged = onLanguageChanged
             )
         }
 
@@ -152,6 +162,23 @@ fun AppNavigation(
             val viewModel: StorageMigrationViewModel = hiltViewModel()
             StorageMigrationScreen(
                 viewModel = viewModel,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Screen.GameBooster.route) {
+            val viewModel: GameBoosterViewModel = hiltViewModel()
+            GameBoosterScreen(
+                viewModel = viewModel,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Screen.WifiSecurity.route) {
+            val viewModel: WifiSecurityViewModel = hiltViewModel()
+            WifiSecurityScreen(
+                viewModel = viewModel,
+                onNavigateToNetGuard = { navController.navigate(Screen.NetGuard.route) },
                 onNavigateBack = { navController.popBackStack() }
             )
         }

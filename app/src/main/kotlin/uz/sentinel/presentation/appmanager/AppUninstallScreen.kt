@@ -14,6 +14,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -35,6 +37,11 @@ fun AppUninstallScreen(
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     var selectedTab by remember { mutableIntStateOf(0) }
+    val uninstallLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) {
+        viewModel.loadInstalledApps()
+    }
     val tabs = listOf("O'rnatilgan ilovalar (${uiState.userApps.size})", "Zavod bloatware (${uiState.bloatwareApps.size})")
 
     Scaffold(
@@ -128,11 +135,11 @@ fun AppUninstallScreen(
                                 item = appItem,
                                 isBloatwareTab = selectedTab == 1,
                                 onUninstallClick = {
-                                    val intent = Intent(Intent.ACTION_UNINSTALL_PACKAGE).apply {
+                                    val intent = Intent(Intent.ACTION_DELETE).apply {
                                         data = Uri.parse("package:${appItem.packageName}")
                                         putExtra(Intent.EXTRA_RETURN_RESULT, true)
                                     }
-                                    context.startActivity(intent)
+                                    uninstallLauncher.launch(intent)
                                 },
                                 onCopyAdbClick = {
                                     val cmd = "adb shell pm uninstall -k --user 0 ${appItem.packageName}"

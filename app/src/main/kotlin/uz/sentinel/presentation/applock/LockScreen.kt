@@ -55,6 +55,7 @@ import kotlin.math.roundToInt
 fun LockScreen(
     packageName: String,
     onUnlocked: () -> Unit,
+    onExitToHome: () -> Unit = {},
     viewModel: LockScreenViewModel
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -165,7 +166,12 @@ fun LockScreen(
                     LockMethod.BIOMETRIC -> {
                         val activity = context as? androidx.fragment.app.FragmentActivity
                         LaunchedEffect(Unit) {
-                            activity?.let { viewModel.launchBiometric(it) }
+                            if (activity != null) {
+                                viewModel.launchBiometric(activity)
+                            } else {
+                                // Overlay runs in Service context; fall back to PIN automatically
+                                viewModel.switchToPin()
+                            }
                         }
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,

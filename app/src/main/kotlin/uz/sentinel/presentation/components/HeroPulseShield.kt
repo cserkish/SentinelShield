@@ -24,6 +24,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -80,13 +81,12 @@ fun HeroPulseShield(
     val glowColor = mainColor.copy(alpha = 0.25f)
 
     GlassCard(
-        modifier = modifier
-            .fillMaxWidth()
-            .clickable { onClick() },
+        modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(28.dp),
         backgroundColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
         borderColor = mainColor.copy(alpha = 0.35f),
-        borderWidth = 1.5.dp
+        borderWidth = 1.5.dp,
+        onClick = onClick
     ) {
         Column(
             modifier = Modifier
@@ -120,11 +120,13 @@ fun HeroPulseShield(
                         center = center
                     )
 
-                    drawCircle(
-                        brush = sweepBrush,
-                        radius = radius,
-                        style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
-                    )
+                    rotate(degrees = rotationAngle, pivot = center) {
+                        drawCircle(
+                            brush = sweepBrush,
+                            radius = radius,
+                            style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+                        )
+                    }
                 }
 
                 // Markaziy Qalqon Doirasi

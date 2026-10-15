@@ -146,6 +146,71 @@ fun NetGuardScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
+                        Spacer(modifier = Modifier.height(14.dp))
+
+            // Interactive Link / URL Scanner Card
+            var urlInput by remember { mutableStateOf("") }
+            GlassCard(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                backgroundColor = ObsidianSurfaceElev,
+                borderColor = GlassBorderTeal,
+                borderWidth = 1.dp
+            ) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = "🔍 Shubhali Havolani (Link) Tekshirish",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        color = CyberTeal
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedTextField(
+                            value = urlInput,
+                            onValueChange = { urlInput = it },
+                            placeholder = { Text("Masalan: click-uz.info yoki bit.ly/...", fontSize = 12.sp) },
+                            singleLine = true,
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.weight(1f)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Button(
+                            onClick = { viewModel.checkUrlSafety(urlInput) },
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = CyberTeal,
+                                contentColor = ObsidianBlack
+                            )
+                        ) {
+                            Text("Tekshirish", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        }
+                    }
+
+                    uiState.urlCheckVerdict?.let { verdict ->
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = if (verdict.isDangerous) NeonCrimson.copy(alpha = 0.15f) else NeonEmerald.copy(alpha = 0.15f),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = verdict.message,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = if (verdict.isDangerous) NeonCrimson else NeonEmerald,
+                                modifier = Modifier.padding(10.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
             // Moliyaviy va Bank Ilovalari Himoyasi Kartasi
             GlassCard(
                 modifier = Modifier.fillMaxWidth(),

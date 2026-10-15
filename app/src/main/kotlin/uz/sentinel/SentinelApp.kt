@@ -5,8 +5,8 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
 import android.os.Build
+import android.os.Looper
 import dagger.hilt.android.HiltAndroidApp
-
 import uz.sentinel.service.ServiceWatchdog
 import uz.sentinel.service.ThreatUpdateWorker
 
@@ -26,7 +26,10 @@ class SentinelApp : Application() {
     private fun verifyAppIntegrity() {
         runCatching {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                val pkgInfo = packageManager.getPackageInfo(packageName, android.content.pm.PackageManager.GET_SIGNING_CERTIFICATES)
+                val pkgInfo = packageManager.getPackageInfo(
+                    packageName,
+                    android.content.pm.PackageManager.GET_SIGNING_CERTIFICATES
+                )
                 if (pkgInfo.signingInfo != null) {
                     android.util.Log.i("SentinelShield", "Integrity check: Genuine signed build verified")
                 }
@@ -41,13 +44,16 @@ class SentinelApp : Application() {
             val msg = throwable.message.orEmpty()
             val stack = android.util.Log.getStackTraceString(throwable)
 
-            // Save crash dump to internal file
             runCatching {
                 val file = java.io.File(filesDir, "crash_dump.txt")
                 file.writeText("Time: ${System.currentTimeMillis()}\nThread: ${thread.name}\nError: $msg\nStack:\n$stack")
             }
 
-            if (msg.contains("ForegroundServiceStartNotAllowedException") ||
+            // Only swallow non-fatal platform/background exceptions on non-Main threads.
+            // Swallowing an exception on the Main UI thread leaves Looper dead and freezes the screen.
+            val isMainThread = thread == Looper.getMainLooper().thread
+            if (!isMainThread && (
+                msg.contains("ForegroundServiceStartNotAllowedException") ||
                 msg.contains("Timeout waiting for draw") ||
                 msg.contains("Bad notification posted") ||
                 msg.contains("RemoteServiceException") ||
@@ -55,8 +61,8 @@ class SentinelApp : Application() {
                 msg.contains("Room") ||
                 msg.contains("no column named") ||
                 msg.contains("DeadSystemException")
-            ) {
-                android.util.Log.w("SentinelShield", "Swallowed benign platform/database crash on budget device: $msg")
+            )) {
+                android.util.Log.w("SentinelShield", "Swallowed benign background exception on ${thread.name}: $msg")
                 return@setDefaultUncaughtExceptionHandler
             }
             originalHandler?.uncaughtException(thread, throwable)

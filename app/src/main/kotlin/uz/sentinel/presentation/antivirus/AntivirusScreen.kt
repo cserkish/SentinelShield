@@ -2,7 +2,6 @@ package uz.sentinel.presentation.antivirus
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -21,6 +20,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -28,6 +29,7 @@ import uz.sentinel.domain.model.DangerLevel
 import uz.sentinel.domain.model.ScanResult
 import uz.sentinel.presentation.components.GlassCard
 import uz.sentinel.presentation.theme.*
+import uz.sentinel.sentinelshield.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,10 +51,10 @@ fun AntivirusScreen(
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background
                 ),
-                title = { Text("Antivirus Himoyasi", fontWeight = FontWeight.Bold) },
+                title = { Text(stringResource(R.string.antivirus_title), fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Orqaga")
+                        Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 },
                 actions = {
@@ -72,7 +74,6 @@ fun AntivirusScreen(
                 .padding(padding)
                 .padding(16.dp)
         ) {
-            // Asosiy Status Kartasi (Frosted Glass Card)
             GlassCard(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(24.dp),
@@ -87,18 +88,17 @@ fun AntivirusScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     if (uiState.isScanning) {
-                        // Skanerlash Radar Animatsiyasi
                         ScanningRadar(color = CyberTeal)
                         Spacer(modifier = Modifier.height(14.dp))
                         Text(
-                            text = "Qurilma tahlil qilinmoqda...",
+                            text = "Chuqur tahlil (Ilovalar + APK fayllar)...",
                             fontWeight = FontWeight.Bold,
                             fontSize = 18.sp,
                             color = CyberTeal
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = uiState.currentScanningApp.ifEmpty { "Ilovalar solishtirilmoqda..." },
+                            text = uiState.currentScanningApp.ifEmpty { "Ilovalar va xotiradagi APK fayllar tekshirilmoqda..." },
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1
@@ -113,7 +113,6 @@ fun AntivirusScreen(
                                 .height(8.dp)
                         )
                     } else {
-                        // Tinch Holat (Himoyalangan yoki Tahdid Topilgan)
                         Surface(
                             shape = CircleShape,
                             color = statusColor.copy(alpha = 0.12f),
@@ -134,16 +133,16 @@ fun AntivirusScreen(
 
                         Text(
                             text = if (uiState.highRiskCount > 0)
-                                "${uiState.highRiskCount} ta shubhali ilova topildi"
+                                "${uiState.highRiskCount} ta xavfli ilova / APK fayl topildi!"
                             else
-                                "Qurilma to'liq himoyalangan",
+                                "Qurilma va xotira to'liq himoyalangan",
                             fontWeight = FontWeight.Bold,
                             fontSize = 18.sp,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Zararli bank klonlari va fishing xavflari tekshirildi",
+                            text = "O'rnatilgan ilovalar va Download/Telegram ichidagi (${uiState.uninstalledApkCount} ta) o'rnatilmagan APK fayllar tekshirildi",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -164,7 +163,7 @@ fun AntivirusScreen(
                             Icon(Icons.Default.Search, contentDescription = null)
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "To'liq qayta skanerlash",
+                                text = "Chuqur skanerlash (Ilovalar + APK)",
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 15.sp
                             )
@@ -188,7 +187,7 @@ fun AntivirusScreen(
                     color = ObsidianSurfaceElev
                 ) {
                     Text(
-                        text = "SHA-256 + OEM",
+                        text = "DEEP APK + SHA-256",
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -254,11 +253,13 @@ fun ScanningRadar(color: Color) {
                 center = center
             )
 
-            drawCircle(
-                brush = sweepBrush,
-                radius = radius,
-                style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round)
-            )
+            rotate(degrees = angle, pivot = center) {
+                drawCircle(
+                    brush = sweepBrush,
+                    radius = radius,
+                    style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round)
+                )
+            }
         }
 
         Icon(
@@ -296,20 +297,37 @@ fun ModernScanResultItem(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Column(modifier = Modifier.weight(1f)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = result.appName,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        if (result.isUninstalledApkFile) {
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = NeonAmber.copy(alpha = 0.18f)
+                            ) {
+                                Text(
+                                    text = "📦 O'rnatilmagan APK",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = NeonAmber,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+                    }
                     Text(
-                        text = result.appName,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 15.sp,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = result.packageName,
+                        text = result.apkFilePath ?: result.packageName,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1
                     )
                 }
 
-                // Tizim Ilovasi / Xavfsizlik Nishoni
                 if (result.isSystemApp) {
                     Surface(
                         shape = RoundedCornerShape(8.dp),
@@ -350,13 +368,13 @@ fun ModernScanResultItem(
             if (!result.isSystemApp && result.detectedPermissions.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "Xavfli ruxsatlar: ${result.detectedPermissions.joinToString(", ")}",
+                    text = "Aniqlangan xavflar: ${result.detectedPermissions.joinToString(", ")}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = NeonCrimson
+                    color = if (result.dangerLevel == DangerLevel.HIGH) NeonCrimson else NeonAmber
                 )
             }
 
-            if (!result.isSystemApp && result.dangerLevel == DangerLevel.HIGH && !result.isUserTrusted) {
+            if (!result.isSystemApp && (result.dangerLevel == DangerLevel.HIGH || result.isUninstalledApkFile) && !result.isUserTrusted) {
                 Spacer(modifier = Modifier.height(10.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -374,7 +392,7 @@ fun ModernScanResultItem(
                         shape = RoundedCornerShape(10.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = NeonCrimson)
                     ) {
-                        Text("O'chirish")
+                        Text(if (result.isUninstalledApkFile) "APK faylni o'chirish" else "O'chirish")
                     }
                 }
             }

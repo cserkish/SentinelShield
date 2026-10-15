@@ -158,13 +158,12 @@ fun CleanerScreen(
 
             // Katta fayllarni ko'chirish (Qo'shimcha xotira / Fleshka)
             GlassCard(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onNavigateToStorageMigration() },
+                modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
                 backgroundColor = ObsidianSurfaceElev,
                 borderColor = GlassBorderTeal,
-                borderWidth = 1.dp
+                borderWidth = 1.dp,
+                onClick = onNavigateToStorageMigration
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),

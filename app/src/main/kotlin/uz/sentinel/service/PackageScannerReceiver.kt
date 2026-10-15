@@ -10,6 +10,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import uz.sentinel.SentinelApp
+import uz.sentinel.data.local.db.LockedAppDao
+import uz.sentinel.data.local.db.ScanResultDao
+import uz.sentinel.data.local.entity.ScanResultEntity
 import uz.sentinel.domain.model.DangerLevel
 import uz.sentinel.domain.usecase.antivirus.ScanUseCase
 import javax.inject.Inject
@@ -20,26 +23,54 @@ class PackageScannerReceiver : BroadcastReceiver() {
     @Inject
     lateinit var scanUseCase: ScanUseCase
 
+    @Inject
+    lateinit var scanResultDao: ScanResultDao
+
+    @Inject
+    lateinit var lockedAppDao: LockedAppDao
+
     override fun onReceive(context: Context, intent: Intent) {
-        val action = intent.action
-        if (action == Intent.ACTION_PACKAGE_ADDED || action == Intent.ACTION_PACKAGE_REPLACED) {
-            val data = intent.data ?: return
-            val packageName = data.schemeSpecificPart ?: return
+        val action = intent.action ?: return
+        val data = intent.data ?: return
+        val packageName = data.schemeSpecificPart ?: return
 
-            if (packageName == context.packageName) return // Ignore self
+        if (packageName == context.packageName) return
 
-            val pendingResult = goAsync()
-            CoroutineScope(Dispatchers.IO).launch {
-                try {
-                    val result = scanUseCase.execute(packageName)
-                    if (result.dangerLevel == DangerLevel.HIGH || result.isKnownMalware) {
-                        showMalwareAlertNotification(context, result.appName, result.dangerScore)
+        val pendingResult = goAsync()
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                when (action) {
+                    Intent.ACTION_PACKAGE_ADDED, Intent.ACTION_PACKAGE_REPLACED -> {
+                        val existing = scanResultDao.getResult(packageName)
+                        val result = scanUseCase.execute(packageName)
+                        scanResultDao.insertResult(
+                            ScanResultEntity(
+                                packageName = result.packageName,
+                                appName = result.appName,
+                                dangerScore = if (result.isSystemApp) 0 else result.dangerScore,
+                                dangerLevel = if (result.isSystemApp) DangerLevel.SAFE.name else result.dangerLevel.name,
+                                detectedPermissions = if (result.isSystemApp) "" else result.detectedPermissions.joinToString(","),
+                                isKnownMalware = if (result.isSystemApp) false else result.isKnownMalware,
+                                malwareName = if (result.isSystemApp) null else result.malwareName,
+                                isUserTrusted = existing?.isUserTrusted ?: false
+                            )
+                        )
+                        if (result.dangerLevel == DangerLevel.HIGH || result.isKnownMalware) {
+                            showMalwareAlertNotification(context, result.appName, result.dangerScore)
+                        }
                     }
-                } catch (e: Exception) {
-                    // Sokin ushlash
-                } finally {
-                    pendingResult.finish()
+                    Intent.ACTION_PACKAGE_REMOVED -> {
+                        val isReplacing = intent.getBooleanExtra(Intent.EXTRA_REPLACING, false)
+                        if (!isReplacing) {
+                            scanResultDao.deleteResult(packageName)
+                            lockedAppDao.deleteByPackageName(packageName)
+                        }
+                    }
                 }
+            } catch (e: Exception) {
+                // Handled gracefully
+            } finally {
+                pendingResult.finish()
             }
         }
     }

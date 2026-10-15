@@ -27,4 +27,5 @@
     <string name="netguard_title">NetGuard Ağ Koruması</string>
     <string name="permissions_title">İzin Denetçisi</string>
     <string name="brand_stability_title">Pil ve Kararlılık</string>
+    <string name="cleaner_cache">Önbellek ve kalıntı dosyalar</string>
 </resources>

@@ -1,31 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-    SentinelShield — Backup Rules
-    Barcha shaxsiy va maxfiy ma'lumotlar cloud backupdan chiqarilgan.
-    Android 12+ (API 31+) uchun dataExtractionRules.xml bilan birgalikda ishlatiladi.
--->
 <full-backup-content>
-    <!-- Barcha fayllarni backupdan chiqar -->
     <exclude domain="file" path="." />
-
-    <!-- Shared Preferences — PIN hash, sozlamalar -->
     <exclude domain="sharedpref" path="." />
-
-    <!-- DataStore fayllar -->
     <exclude domain="file" path="datastore" />
-
-    <!-- Room database fayllar -->
-    <exclude domain="database" path="sentinel_database" />
-    <exclude domain="database" path="sentinel_database-shm" />
-    <exclude domain="database" path="sentinel_database-wal" />
-
-    <!-- Bosqinchi rasmlari -->
-    <exclude domain="file" path="intruder_photos" />
-
-
-    <!-- External storage -->
+    <!-- Matches DatabaseModule.kt database name: sentinel_shield.db -->
+    <exclude domain="database" path="sentinel_shield.db" />
+    <exclude domain="database" path="sentinel_shield.db-shm" />
+    <exclude domain="database" path="sentinel_shield.db-wal" />
+    <!-- Matches IntruderSelfieManager.kt folder name: intruder -->
+    <exclude domain="file" path="intruder" />
     <exclude domain="external" path="." />
-
-    <!-- Root papka — hamma narsani bloklash -->
     <exclude domain="root" path="." />
 </full-backup-content>

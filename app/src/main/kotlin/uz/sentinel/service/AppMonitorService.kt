@@ -1,15 +1,12 @@
 package uz.sentinel.service
 
 import android.app.Notification
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.app.Service
 import android.app.usage.UsageEvents
 import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.graphics.PixelFormat
 import android.os.Build
@@ -21,12 +18,15 @@ import android.view.Gravity
 import android.view.View
 import android.view.WindowManager
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
 import uz.sentinel.SentinelApp
 import uz.sentinel.core.utils.IntruderSelfieManager
 import uz.sentinel.domain.repository.AppLockRepository
+import uz.sentinel.presentation.applock.LockMethod
 import uz.sentinel.presentation.applock.LockOverlayView
+import uz.sentinel.presentation.applock.LockPromptActivity
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -40,14 +40,13 @@ class AppMonitorService : Service() {
 
     private lateinit var windowManager: WindowManager
     private lateinit var usageStatsManager: UsageStatsManager
-    private val serviceScope = CoroutineScope(Dispatchers.Default + Job())
+    private val serviceScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
     private var overlayView: View? = null
     private var currentLockedPackage: String? = null
     private var lastForegroundPackage: String = ""
 
     private val mainHandler = Handler(Looper.getMainLooper())
-    private var packageScannerReceiver: PackageScannerReceiver? = null
     private var screenStateReceiver: android.content.BroadcastReceiver? = null
     @Volatile
     private var isScreenInteractive: Boolean = true
@@ -92,22 +91,10 @@ class AppMonitorService : Service() {
                 startForeground(NOTIFICATION_ID, buildSilentNotification())
             }
         } catch (t: Throwable) {
-            // Sokin ushlash: ForegroundServiceStartNotAllowedException yoki MissingForegroundServiceTypeException
             android.util.Log.w("AppMonitorService", "startForeground failed gracefully: ${t.message}")
         }
-        registerPackageScanner()
         registerScreenStateReceiver()
         startMonitoring()
-    }
-
-    private fun registerPackageScanner() {
-        packageScannerReceiver = PackageScannerReceiver()
-        val filter = IntentFilter().apply {
-            addAction(Intent.ACTION_PACKAGE_ADDED)
-            addAction(Intent.ACTION_PACKAGE_REPLACED)
-            addDataScheme("package")
-        }
-        registerReceiver(packageScannerReceiver, filter)
     }
 
     private fun registerScreenStateReceiver() {
@@ -116,13 +103,12 @@ class AppMonitorService : Service() {
                 when (intent?.action) {
                     Intent.ACTION_SCREEN_OFF -> {
                         isScreenInteractive = false
-                        android.util.Log.d("AppMonitorService", "Screen OFF: entering ultra-low power standby")
+                        lastForegroundPackage = ""
                     }
                     Intent.ACTION_SCREEN_ON -> {
                         isScreenInteractive = true
-                        android.util.Log.d("AppMonitorService", "Screen ON: waking monitor instantly")
                         serviceScope.launch {
-                            val fg = getForegroundPackage()
+                            val fg = getForegroundPackage(lookbackMs = 15_000L)
                             if (fg != null && fg != packageName) {
                                 lastForegroundPackage = fg
                                 handleForegroundAppChange(fg)
@@ -136,12 +122,15 @@ class AppMonitorService : Service() {
             addAction(Intent.ACTION_SCREEN_OFF)
             addAction(Intent.ACTION_SCREEN_ON)
         }
-        registerReceiver(screenStateReceiver, filter)
+        ContextCompat.registerReceiver(
+            this,
+            screenStateReceiver,
+            filter,
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        )
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        return START_STICKY
-    }
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_STICKY
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -149,11 +138,6 @@ class AppMonitorService : Service() {
         super.onDestroy()
         serviceScope.cancel()
         removeOverlay()
-        packageScannerReceiver?.let {
-            try {
-                unregisterReceiver(it)
-            } catch (e: Exception) {}
-        }
         screenStateReceiver?.let {
             try {
                 unregisterReceiver(it)
@@ -172,17 +156,16 @@ class AppMonitorService : Service() {
                     }
                     delay(POLL_INTERVAL_MS)
                 } else {
-                    // Ekran o'chiq paytida ortiqcha CPU va batareya sarflamaymiz
                     delay(2500L)
                 }
             }
         }
     }
 
-    private fun getForegroundPackage(): String? {
+    private fun getForegroundPackage(lookbackMs: Long = 3500L): String? {
         return try {
             val now = System.currentTimeMillis()
-            val usageEvents = usageStatsManager.queryEvents(now - 3000L, now)
+            val usageEvents = usageStatsManager.queryEvents(now - lookbackMs, now)
             val event = UsageEvents.Event()
             var foreground: String? = null
             while (usageEvents.hasNextEvent()) {
@@ -202,7 +185,10 @@ class AppMonitorService : Service() {
         if (isLocked) {
             if (currentLockedPackage != targetPackage) {
                 currentLockedPackage = targetPackage
-                mainHandler.post { showOverlay(targetPackage) }
+                val method = appLockRepository.getLockMethod(targetPackage)
+                mainHandler.post {
+                    presentLockChallenge(targetPackage, method)
+                }
             }
         } else {
             if (currentLockedPackage != null) {
@@ -212,10 +198,36 @@ class AppMonitorService : Service() {
         }
     }
 
-    private fun showOverlay(targetPackage: String) {
-        if (overlayView != null) return
+    /**
+     * Launches the transparent LockPromptActivity (FragmentActivity) so BiometricPrompt,
+     * PIN, and Pattern work with full hardware acceleration, and falls back to LockOverlayView
+     * if OEM background activity restrictions block startActivity.
+     */
+    private fun presentLockChallenge(targetPackage: String, method: LockMethod) {
+        val canDrawOverlays = Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(this)
 
-        // Check overlay permission
+        // When SYSTEM_ALERT_WINDOW is granted on Android 10+, starting a transparent Activity from
+        // a service is allowed by the OS and enables native BiometricPrompt (Fingerprint/Face).
+        val launchedActivity = try {
+            val intent = LockPromptActivity.createIntent(this, targetPackage)
+            startActivity(intent)
+            currentLockedPackage = null
+            true
+        } catch (e: Exception) {
+            false
+        }
+
+        if (!launchedActivity && canDrawOverlays) {
+            showOverlay(targetPackage)
+        }
+    }
+
+    private fun showOverlay(targetPackage: String) {
+        if (overlayView != null) {
+            (overlayView as? LockOverlayView)?.setPackageName(targetPackage)
+            return
+        }
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
             return
         }
@@ -249,12 +261,30 @@ class AppMonitorService : Service() {
                     currentLockedPackage = null
                     mainHandler.post { removeOverlay() }
                 }
+                setOnDismissToHomeListener {
+                    currentLockedPackage = null
+                    lastForegroundPackage = ""
+                    mainHandler.post {
+                        removeOverlay()
+                        launchHomeScreen()
+                    }
+                }
             }
 
             overlayView = lockView
             windowManager.addView(lockView, params)
         } catch (e: Exception) {
             overlayView = null
+        }
+    }
+
+    private fun launchHomeScreen() {
+        runCatching {
+            val homeIntent = Intent(Intent.ACTION_MAIN).apply {
+                addCategory(Intent.CATEGORY_HOME)
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            startActivity(homeIntent)
         }
     }
 

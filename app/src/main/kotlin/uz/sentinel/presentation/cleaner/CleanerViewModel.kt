@@ -10,6 +10,7 @@ import kotlinx.coroutines.launch
 import uz.sentinel.data.local.prefs.SentinelPreferences
 import uz.sentinel.domain.model.JunkItem
 import uz.sentinel.domain.repository.JunkScannerRepository
+import java.io.File
 import javax.inject.Inject
 
 data class CleanerUiState(
@@ -38,7 +39,7 @@ class CleanerViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isScanning = true, cleanSuccessMessage = null)
             val junk = junkRepository.scanJunk()
-            val total = junk.sumOf { it.sizeBytes }
+            val total = junk.filter { it.isSelected }.sumOf { it.sizeBytes }
             _uiState.value = _uiState.value.copy(
                 isScanning = false,
                 items = junk,
@@ -60,15 +61,20 @@ class CleanerViewModel @Inject constructor(
     fun cleanSelected() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isCleaning = true)
-            val selected = _uiState.value.items.filter { it.isSelected }
+            val currentItems = _uiState.value.items
+            val selected = currentItems.filter { it.isSelected }
             val freedBytes = junkRepository.deleteJunk(selected)
             preferences.recordCleanedBytes(freedBytes)
+
+            // Keep unselected items or any items that still exist on disk
+            val remaining = currentItems.filter { !it.isSelected || File(it.path).exists() }
+            val remainingSelectedSize = remaining.filter { it.isSelected }.sumOf { it.sizeBytes }
 
             val freedMb = String.format("%.1f", freedBytes / (1024.0 * 1024.0))
             _uiState.value = _uiState.value.copy(
                 isCleaning = false,
-                items = emptyList(),
-                totalSizeBytes = 0L,
+                items = remaining,
+                totalSizeBytes = remainingSelectedSize,
                 lastCleanedBytes = freedBytes,
                 cleanSuccessMessage = "$freedMb MB kesh va vaqtinchalik fayllar xavfsiz tozalandi!"
             )

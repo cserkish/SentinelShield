@@ -3,30 +3,44 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <!-- ═══════════════════════════════════════════════════════════
-         NORMAL PERMISSIONS
+         NORMAL & PACKAGE PERMISSIONS
     ═══════════════════════════════════════════════════════════ -->
 
     <!-- Antivirus: query all installed packages for scanning -->
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
         tools:ignore="QueryAllPackagesPermission" />
+    <!-- Antivirus & App Manager: request package uninstallation (Required on Android 8.0+) -->
+    <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
     <!-- Antivirus: receive package install/update events & restart on reboot -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <!-- Network guard: create local loopback DNS VPN tunnel -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <!-- Foreground service for AppLock monitor and Local VPN -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Game Booster & System Optimizer: free RAM from heavy background processes -->
+    <uses-permission android:name="android.permission.KILL_BACKGROUND_PROCESSES" />
     <!-- Post notifications (Android 13+) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!-- ═══════════════════════════════════════════════════════════
-         DANGEROUS PERMISSIONS
+         DANGEROUS & STORAGE PERMISSIONS
     ═══════════════════════════════════════════════════════════ -->
 
     <!-- IntruderSelfie: camera snapshot on failed unlock while lock screen is active -->
     <uses-permission android:name="android.permission.CAMERA" />
+
+    <!-- Cleaner & Heavy File Scanner permissions -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="29"
+        tools:ignore="ScopedStorage" />
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
+        tools:ignore="ScopedStorage" />
 
     <!-- ═══════════════════════════════════════════════════════════
          SPECIAL PERMISSIONS
@@ -69,6 +83,16 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- ───── Transparent AppLock Biometric/PIN Activity ───── -->
+        <activity
+            android:name="uz.sentinel.presentation.applock.LockPromptActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:launchMode="singleInstance"
+            android:taskAffinity=""
+            android:configChanges="orientation|screenSize|keyboardHidden"
+            android:theme="@style/Theme.SentinelShield.Transparent" />
 
         <!-- ───── AppLock Monitor Service ───── -->
         <service
@@ -115,13 +139,14 @@
             </intent-filter>
         </receiver>
 
-        <!-- ───── Package Scanner Receiver (scans newly installed apps) ───── -->
+        <!-- ───── Package Scanner Receiver (scans newly installed & cleans up removed apps) ───── -->
         <receiver
             android:name="uz.sentinel.service.PackageScannerReceiver"
             android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.PACKAGE_ADDED" />
                 <action android:name="android.intent.action.PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.PACKAGE_REMOVED" />
                 <data android:scheme="package" />
             </intent-filter>
         </receiver>

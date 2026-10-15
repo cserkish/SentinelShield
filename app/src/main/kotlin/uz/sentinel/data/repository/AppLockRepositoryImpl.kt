@@ -7,6 +7,7 @@ import uz.sentinel.data.local.entity.LockedAppEntity
 import uz.sentinel.data.local.prefs.SentinelPreferences
 import uz.sentinel.domain.repository.AppLockRepository
 import uz.sentinel.presentation.applock.LockMethod
+import java.security.MessageDigest
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -21,7 +22,6 @@ class AppLockRepositoryImpl @Inject constructor(
     private val temporarilyUnlocked = ConcurrentHashMap<String, Long>()
 
     override suspend fun isAppLocked(packageName: String): Boolean {
-        // If temporarily unlocked within the last 5 minutes, return false
         val unlockedTime = temporarilyUnlocked[packageName]
         if (unlockedTime != null && System.currentTimeMillis() - unlockedTime < 5 * 60 * 1000L) {
             return false
@@ -52,34 +52,50 @@ class AppLockRepositoryImpl @Inject constructor(
         }
     }
 
-    private fun hashPin(pin: String): String {
-        val salt = "SentinelShield#AppLock#Salt_2026"
-        val digest = java.security.MessageDigest.getInstance("SHA-256")
-        val hashBytes = digest.digest((salt + pin).toByteArray(Charsets.UTF_8))
-        return hashBytes.joinToString("") { "%02x".format(it) }
-    }
-
     override suspend fun verifyPin(packageName: String, enteredPin: String): Boolean {
-        val savedHash = preferences.appLockPinHash.first()
-        val defaultHash = hashPin("000000")
-        val enteredHash = hashPin(enteredPin)
+        val savedValue = preferences.appLockPinHash.first()
+        val enteredHash = SentinelPreferences.hashPin(enteredPin)
 
-        return if (savedHash.isNullOrEmpty()) {
-            java.security.MessageDigest.isEqual(
+        if (savedValue.isNullOrEmpty()) {
+            val defaultHash = SentinelPreferences.hashPin("000000")
+            return MessageDigest.isEqual(
                 enteredHash.toByteArray(Charsets.UTF_8),
                 defaultHash.toByteArray(Charsets.UTF_8)
             )
-        } else {
-            java.security.MessageDigest.isEqual(
-                enteredHash.toByteArray(Charsets.UTF_8),
-                savedHash.toByteArray(Charsets.UTF_8)
-            )
         }
+
+        // Backward compatibility: if an older build saved a raw 6-digit PIN in DataStore,
+        // verify it safely and migrate it to a salted SHA-256 hash on success.
+        if (!SentinelPreferences.isSha256Hash(savedValue)) {
+            val matchesPlain = MessageDigest.isEqual(
+                enteredPin.trim().toByteArray(Charsets.UTF_8),
+                savedValue.trim().toByteArray(Charsets.UTF_8)
+            )
+            if (matchesPlain) {
+                preferences.savePinHash(enteredHash)
+            }
+            return matchesPlain
+        }
+
+        return MessageDigest.isEqual(
+            enteredHash.toByteArray(Charsets.UTF_8),
+            savedValue.lowercase().toByteArray(Charsets.UTF_8)
+        )
     }
 
     override suspend fun verifyPattern(packageName: String, patternDots: List<Int>): Boolean {
-        // Pattern verification (minimum 4 dots)
-        return patternDots.size >= 4
+        if (patternDots.size < 4) return false
+        val savedPatternHash = preferences.appLockPatternHash.first()
+        if (savedPatternHash.isNullOrEmpty()) {
+            // If no pattern was previously saved, store the first valid pattern and allow unlock
+            preferences.savePattern(patternDots)
+            return true
+        }
+        val enteredPatternHash = SentinelPreferences.hashPattern(patternDots)
+        return MessageDigest.isEqual(
+            enteredPatternHash.toByteArray(Charsets.UTF_8),
+            savedPatternHash.toByteArray(Charsets.UTF_8)
+        )
     }
 
     override suspend fun grantTemporaryAccess(packageName: String) {

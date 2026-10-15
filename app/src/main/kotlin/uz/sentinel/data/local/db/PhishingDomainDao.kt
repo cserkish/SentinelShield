@@ -9,7 +9,7 @@ interface PhishingDomainDao {
     @Query("SELECT * FROM phishing_domains WHERE domain = :domain LIMIT 1")
     suspend fun findDomain(domain: String): PhishingDomainEntity?
 
-    @Query("SELECT * FROM phishing_domains WHERE :domain LIKE '%' || domain LIMIT 1")
+    @Query("SELECT * FROM phishing_domains WHERE :domain LIKE '%.' || domain LIMIT 1")
     suspend fun matchSubdomain(domain: String): PhishingDomainEntity?
 
     @Query("SELECT * FROM phishing_domains ORDER BY addedAt DESC LIMIT 100")

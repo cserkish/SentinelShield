@@ -21,6 +21,12 @@ interface LockedAppDao {
     @Query("UPDATE locked_apps SET isLocked = :isLocked WHERE packageName = :packageName")
     suspend fun setLockStatus(packageName: String, isLocked: Boolean)
 
+    @Query("UPDATE locked_apps SET lockType = :lockType WHERE isLocked = 1")
+    suspend fun updateAllLockTypes(lockType: String)
+
+    @Query("DELETE FROM locked_apps WHERE packageName = :packageName")
+    suspend fun deleteByPackageName(packageName: String)
+
     @Delete
     suspend fun removeApp(app: LockedAppEntity)
 }

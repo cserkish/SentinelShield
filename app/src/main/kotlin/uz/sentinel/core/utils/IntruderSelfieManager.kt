@@ -1,7 +1,9 @@
 package uz.sentinel.core.utils
 
+import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Log
@@ -17,6 +19,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import uz.sentinel.data.local.db.SentinelDatabase
 import uz.sentinel.data.local.entity.IntruderPhotoEntity
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
 import java.nio.ByteBuffer
@@ -49,9 +52,18 @@ class IntruderSelfieManager @Inject constructor(
                 .hasSystemFeature(PackageManager.FEATURE_CAMERA_FRONT)
             if (!hasFrontCamera) return@withContext
 
+            // Verify CAMERA runtime permission before invoking CameraX
+            if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
+                != PackageManager.PERMISSION_GRANTED
+            ) {
+                Log.w(tag, "CAMERA permission not granted; skipping intruder capture")
+                return@withContext
+            }
+
             ensureKeyExists()
 
             val imageBytes = captureImageBytes() ?: return@withContext
+            if (imageBytes.isEmpty()) return@withContext
             val encrypted = encryptBytes(imageBytes)
 
             val intruderDir = File(context.filesDir, "intruder").apply { mkdirs() }
@@ -88,47 +100,80 @@ class IntruderSelfieManager @Inject constructor(
     }
 
     private suspend fun captureImageBytes(): ByteArray? = suspendCancellableCoroutine { cont ->
+        val mainExecutor = ContextCompat.getMainExecutor(context)
         val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
         cameraProviderFuture.addListener({
-            val cameraProvider = cameraProviderFuture.get()
+            val cameraProvider = try {
+                cameraProviderFuture.get()
+            } catch (e: Exception) {
+                if (cont.isActive) cont.resumeWithException(e)
+                return@addListener
+            }
+
             val imageCapture = ImageCapture.Builder()
                 .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
                 .build()
             val cameraSelector = CameraSelector.Builder()
                 .requireLensFacing(CameraSelector.LENS_FACING_FRONT)
                 .build()
+            val lifecycleOwner = TempLifecycleOwner()
 
             try {
                 cameraProvider.unbindAll()
-                val lifecycleOwner = TempLifecycleOwner()
                 cameraProvider.bindToLifecycle(lifecycleOwner, cameraSelector, imageCapture)
 
                 imageCapture.takePicture(executor, object : ImageCapture.OnImageCapturedCallback() {
                     override fun onCaptureSuccess(image: ImageProxy) {
-                        val bytes = imageProxyToByteArray(image)
-                        image.close()
-                        cameraProvider.unbindAll()
-                        lifecycleOwner.destroy()
-                        cont.resume(bytes)
+                        val bytes = try {
+                            imageProxyToJpegBytes(image)
+                        } catch (e: Exception) {
+                            null
+                        } finally {
+                            image.close()
+                        }
+                        // CRITICAL FIX: unbindAll() and lifecycleOwner.destroy() MUST run on Main Thread!
+                        mainExecutor.execute {
+                            runCatching { cameraProvider.unbindAll() }
+                            runCatching { lifecycleOwner.destroy() }
+                            if (cont.isActive) {
+                                cont.resume(bytes)
+                            }
+                        }
                     }
 
                     override fun onError(exception: ImageCaptureException) {
-                        cameraProvider.unbindAll()
-                        lifecycleOwner.destroy()
-                        cont.resumeWithException(exception)
+                        mainExecutor.execute {
+                            runCatching { cameraProvider.unbindAll() }
+                            runCatching { lifecycleOwner.destroy() }
+                            if (cont.isActive) {
+                                cont.resumeWithException(exception)
+                            }
+                        }
                     }
                 })
             } catch (e: Exception) {
-                cont.resumeWithException(e)
+                runCatching { cameraProvider.unbindAll() }
+                runCatching { lifecycleOwner.destroy() }
+                if (cont.isActive) {
+                    cont.resumeWithException(e)
+                }
             }
-        }, ContextCompat.getMainExecutor(context))
+        }, mainExecutor)
     }
 
-    private fun imageProxyToByteArray(image: ImageProxy): ByteArray {
-        val buffer: ByteBuffer = image.planes[0].buffer
-        val bytes = ByteArray(buffer.remaining())
-        buffer.get(bytes)
-        return bytes
+    private fun imageProxyToJpegBytes(image: ImageProxy): ByteArray {
+        return try {
+            val bitmap = image.toBitmap()
+            ByteArrayOutputStream().use { baos ->
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 85, baos)
+                baos.toByteArray()
+            }
+        } catch (e: Exception) {
+            val buffer: ByteBuffer = image.planes[0].buffer
+            val bytes = ByteArray(buffer.remaining())
+            buffer.get(bytes)
+            bytes
+        }
     }
 
     private fun ensureKeyExists() {

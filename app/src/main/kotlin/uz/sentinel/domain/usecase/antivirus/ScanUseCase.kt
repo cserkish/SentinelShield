@@ -2,6 +2,7 @@ package uz.sentinel.domain.usecase.antivirus
 
 import android.content.Context
 import android.content.pm.PackageManager
+import android.os.Environment
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -41,7 +42,6 @@ class ScanUseCase @Inject constructor(
         val apkPath = appInfo?.sourceDir
         val isSystem = heuristicEngine.isSystemOrOemApp(packageInfo)
 
-        // O'zimizning ilovamiz (SentinelShield) har doim xavfsiz
         if (packageName == context.packageName) {
             return@withContext ScanResult(
                 packageName = packageName,
@@ -54,9 +54,7 @@ class ScanUseCase @Inject constructor(
             )
         }
 
-        // Tizim va rasmiy ommabop ilovalar (Telegram, Instagram, YouTube va b.) doimo XAVFSIZ (0 ball)
-        val isOfficialPopular = heuristicEngine.isOfficialPopularApp(packageName)
-        if (isSystem || isOfficialPopular) {
+        if (isSystem) {
             return@withContext ScanResult(
                 packageName = packageName,
                 appName = appName,
@@ -64,24 +62,13 @@ class ScanUseCase @Inject constructor(
                 dangerLevel = DangerLevel.SAFE,
                 detectedPermissions = emptyList(),
                 isKnownMalware = false,
-                isSystemApp = isSystem
+                isSystemApp = true
             )
         }
 
-        // 1. Foydalanuvchi o'rnatgan APK lar uchun SHA-256 heshini hisoblash
-        val apkHash = if (apkPath != null) {
-            calculateSha256(apkPath)
-        } else {
-            ""
-        }
-
-        // 2. Ofline viruslar xesh bazasidan qidirish
-        val knownMalwareName = if (apkHash.isNotEmpty()) {
-            hashRepository.findMalware(apkHash)
-        } else null
-
-        // 3. Evristik ruxsatlar tahlili
-        val heuristicResult = heuristicEngine.analyze(packageInfo, packageManager)
+        val apkHash = if (apkPath != null) calculateSha256(apkPath) else ""
+        val knownMalwareName = if (apkHash.isNotEmpty()) hashRepository.findMalware(apkHash) else null
+        val heuristicResult = heuristicEngine.analyze(packageInfo, packageManager, isUninstalledArchive = false)
 
         val isKnownMalware = knownMalwareName != null
         val finalScore = if (isKnownMalware) 100 else heuristicResult.dangerScore
@@ -95,8 +82,100 @@ class ScanUseCase @Inject constructor(
             detectedPermissions = heuristicResult.flaggedPermissions,
             isKnownMalware = isKnownMalware,
             malwareName = knownMalwareName,
-            isSystemApp = false
+            isSystemApp = false,
+            isUninstalledApkFile = false,
+            apkFilePath = apkPath
         )
+    }
+
+    /**
+     * Deep-scans an uninstalled .apk file on external storage (e.g. /sdcard/Download/Taklifnoma.apk)
+     * using PackageManager.getPackageArchiveInfo + SHA-256 + HeuristicEngine.
+     */
+    suspend fun executeApkFile(apkFile: File): ScanResult? = withContext(Dispatchers.IO) {
+        if (!apkFile.exists() || !apkFile.isFile) return@withContext null
+
+        val archiveInfo = try {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                packageManager.getPackageArchiveInfo(
+                    apkFile.absolutePath,
+                    PackageManager.PackageInfoFlags.of(PackageManager.GET_PERMISSIONS.toLong())
+                )
+            } else {
+                @Suppress("DEPRECATION")
+                packageManager.getPackageArchiveInfo(apkFile.absolutePath, PackageManager.GET_PERMISSIONS)
+            }
+        } catch (e: Exception) {
+            null
+        } ?: return@withContext null
+
+        val appInfo = archiveInfo.applicationInfo
+        appInfo?.sourceDir = apkFile.absolutePath
+        appInfo?.publicSourceDir = apkFile.absolutePath
+
+        val rawLabel = try {
+            appInfo?.loadLabel(packageManager)?.toString()
+        } catch (e: Exception) {
+            null
+        }
+        val displayAppName = "[APK Fayl] ${rawLabel ?: apkFile.name}"
+        val syntheticKey = "apkfile:${apkFile.absolutePath}"
+
+        val apkHash = calculateSha256(apkFile.absolutePath)
+        val knownMalwareName = if (apkHash.isNotEmpty()) hashRepository.findMalware(apkHash) else null
+        val heuristicResult = heuristicEngine.analyze(archiveInfo, packageManager, isUninstalledArchive = true)
+
+        val isKnownMalware = knownMalwareName != null
+        val finalScore = if (isKnownMalware) 100 else heuristicResult.dangerScore
+        val finalLevel = if (isKnownMalware) DangerLevel.HIGH else heuristicResult.dangerLevel
+
+        ScanResult(
+            packageName = syntheticKey,
+            appName = displayAppName,
+            dangerScore = finalScore,
+            dangerLevel = finalLevel,
+            detectedPermissions = heuristicResult.flaggedPermissions,
+            isKnownMalware = isKnownMalware,
+            malwareName = knownMalwareName,
+            isSystemApp = false,
+            isUninstalledApkFile = true,
+            apkFilePath = apkFile.absolutePath
+        )
+    }
+
+    /**
+     * Finds all uninstalled .apk files across Downloads, Telegram, WhatsApp, and Documents folders.
+     */
+    suspend fun findUninstalledApkFiles(): List<File> = withContext(Dispatchers.IO) {
+        val found = mutableListOf<File>()
+        val seenPaths = mutableSetOf<String>()
+        val root = Environment.getExternalStorageDirectory()
+
+        val searchDirs = listOfNotNull(
+            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS),
+            File(root, "Telegram/Telegram Documents"),
+            File(root, "Android/media/org.telegram.messenger/Telegram/Telegram Documents"),
+            File(root, "Android/data/org.telegram.messenger/files/Telegram/Telegram Documents"),
+            File(root, "WhatsApp/Media/WhatsApp Documents"),
+            File(root, "Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Documents")
+        )
+
+        for (dir in searchDirs) {
+            runCatching {
+                if (dir.exists() && dir.isDirectory) {
+                    dir.walkTopDown()
+                        .maxDepth(4)
+                        .filter { it.isFile && it.name.lowercase().endsWith(".apk") }
+                        .forEach { file ->
+                            if (seenPaths.add(file.canonicalPath)) {
+                                found.add(file)
+                            }
+                        }
+                }
+            }
+        }
+        found
     }
 
     private fun calculateSha256(filePath: String): String {

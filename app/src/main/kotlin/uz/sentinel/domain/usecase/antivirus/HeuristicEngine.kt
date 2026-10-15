@@ -66,7 +66,7 @@ class HeuristicEngine @Inject constructor() {
         "com.android.chrome"
     )
 
-    fun isTrustedOemPackage(packageName: String): Boolean {
+    fun isTrustedOemPrefix(packageName: String): Boolean {
         val pkg = packageName.lowercase()
         return trustedOemPrefixes.any { pkg.startsWith(it) }
     }
@@ -75,19 +75,29 @@ class HeuristicEngine @Inject constructor() {
         return officialPopularApps.contains(packageName.lowercase())
     }
 
+    /**
+     * Strict system/OEM check: ONLY returns true if the OS kernel/PackageManager confirms
+     * FLAG_SYSTEM or FLAG_UPDATED_SYSTEM_APP, or if an OEM package was installed by the system/store.
+     * Prevents fake malware APKs from spoofing "com.android.*" or "com.samsung.*" package names!
+     */
     fun isSystemOrOemApp(packageInfo: PackageInfo): Boolean {
-        val appInfo = packageInfo.applicationInfo
-        val flags = appInfo?.flags ?: 0
-        val isSystem = (flags and ApplicationInfo.FLAG_SYSTEM) != 0 ||
+        val appInfo = packageInfo.applicationInfo ?: return false
+        val flags = appInfo.flags
+        val isTrueSystemFlag = (flags and ApplicationInfo.FLAG_SYSTEM) != 0 ||
                 (flags and ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0
-        if (isSystem) return true
-
-        return isTrustedOemPackage(packageInfo.packageName)
+        return isTrueSystemFlag
     }
 
-    fun analyze(packageInfo: PackageInfo, packageManager: PackageManager): HeuristicResult {
-        // 1. Tizim va rasmiy OEM ilovalari uchun 0 ball va XAVFSIZ
-        if (isSystemOrOemApp(packageInfo)) {
+    fun analyze(
+        packageInfo: PackageInfo,
+        packageManager: PackageManager,
+        isUninstalledArchive: Boolean = false
+    ): HeuristicResult {
+        val pkg = packageInfo.packageName.lowercase()
+        val isTrueSystem = !isUninstalledArchive && isSystemOrOemApp(packageInfo)
+
+        // 1. Haqiqiy tizim ilovalari uchun 0 ball va XAVFSIZ
+        if (isTrueSystem) {
             return HeuristicResult(
                 dangerScore = 0,
                 dangerLevel = DangerLevel.SAFE,
@@ -97,8 +107,10 @@ class HeuristicEngine @Inject constructor() {
             )
         }
 
-        // 2. Rasmiy ommabop ilovalar (Telegram, Instagram, WhatsApp, YouTube va b.) uchun 0 ball
-        if (isOfficialPopularApp(packageInfo.packageName)) {
+        val isOfficialStore = !isUninstalledArchive && isInstalledFromOfficialStore(packageInfo.packageName, packageManager)
+
+        // 2. Rasmiy do'kondan o'rnatilgan ommabop ilovalar uchun 0 ball
+        if (!isUninstalledArchive && isOfficialStore && (isOfficialPopularApp(pkg) || isTrustedOemPrefix(pkg))) {
             return HeuristicResult(
                 dangerScore = 0,
                 dangerLevel = DangerLevel.SAFE,
@@ -112,8 +124,6 @@ class HeuristicEngine @Inject constructor() {
         var score = 0
         val flaggedPermissions = mutableListOf<String>()
 
-        // 3. Soxta tizim ilovalari va kripto-maynerlarni aniqlash (1-bosqich)
-        val pkg = packageInfo.packageName.lowercase()
         val appName = packageInfo.applicationInfo?.loadLabel(packageManager)?.toString()?.lowercase() ?: ""
         val hasOverlay = permissions.contains("android.permission.SYSTEM_ALERT_WINDOW")
         val hasInternet = permissions.contains("android.permission.INTERNET")
@@ -121,21 +131,35 @@ class HeuristicEngine @Inject constructor() {
                 permissions.contains("android.permission.RECEIVE_SMS") ||
                 permissions.contains("android.permission.READ_SMS")
 
-        val isFakeSystemApp = pkg.contains("com.android.system.service") ||
-                pkg.contains("google.play.services.update") ||
-                appName.contains("google play services update") ||
-                (appName == "flashlight" && (hasOverlay || hasSms)) ||
-                (appName.contains("super cleaner") && hasOverlay)
+        // 3. Anti-Spoofing: Tizim ilovasi bo'lmasa-yu, lekin com.android.*, com.samsung.*, com.google.android.* nomini olgan bo'lsa
+        val isSpoofedSystemPackage = !isTrueSystem && !isOfficialStore && (
+            pkg.startsWith("com.android.system") ||
+            pkg.contains("google.play.services.update") ||
+            appName.contains("google play services update") ||
+            (appName == "flashlight" && (hasOverlay || hasSms)) ||
+            (appName.contains("super cleaner") && hasOverlay) ||
+            (isTrustedOemPrefix(pkg) && hasSms)
+        )
 
-        if (isFakeSystemApp) {
+        if (isSpoofedSystemPackage) {
             score = 100
-            flaggedPermissions.add("🚨 Soxta tizim ilovasi / Troyan niqobi")
+            flaggedPermissions.add("🚨 Soxta tizim ilovasi / Paket nomi qalbakilashtirilgan (Spoofing)")
         }
-        // Foydalanuvchi o'rnatgan ilovalar uchun xavfli ruxsatlar kombinatsiyasini tahlil qilish
+
+        // 4. O'rnatilmagan .apk fayllar uchun maxsus chuqur tahlil (masalan: Taklifnoma.apk, Fotom.apk, Soliq.apk)
+        if (isUninstalledArchive) {
+            score += 20
+            flaggedPermissions.add("📦 Tashqi yuklab olingan o'rnatilmagan APK fayl")
+            val suspiciousSocialNames = listOf("taklifnoma", "fotom", "rasm", "video", "soliq", "jarima", "mukofot", "bonus", "kredit", "click", "payme", "uzcard", "humo")
+            if (suspiciousSocialNames.any { appName.contains(it) || pkg.contains(it) }) {
+                score += 45
+                flaggedPermissions.add("🚨 Ijtimoiy muhandislik / Troyan APK nomi aniqlandi")
+            }
+        }
 
         if (hasSms) {
             score += 25
-            flaggedPermissions.add("SMS yuborish/o'qish")
+            flaggedPermissions.add("SMS yuborish va OTP kodlarni o'qish")
         }
         if (permissions.contains("android.permission.RECORD_AUDIO")) {
             score += 20
@@ -166,16 +190,13 @@ class HeuristicEngine @Inject constructor() {
             flaggedPermissions.add("Telefon yonganda ishga tushish")
         }
 
-        // 🚨 Haqiqiy Bank Troyani imzosi (Faqat norasmiy uchinchi tomon ilovalarida)
-        if (hasSms && hasOverlay && hasInternet) {
-            score = maxOf(score + 25, 85)
-            flaggedPermissions.add("⚠️ Bank ilovalarini to'sib OTP o'g'irlash xavfi (Banker)")
+        // 🚨 Haqiqiy Bank Troyani imzosi
+        if (hasSms && (hasOverlay || isUninstalledArchive) && hasInternet) {
+            score = maxOf(score + 25, 90)
+            flaggedPermissions.add("⚠️ Bank ilovalarini to'sib OTP o'g'irlash xavfi (Banker Trojan)")
         }
 
-        // Rasmiy do'konlar (Google Play, Galaxy Store, GetApps va h.k.) tekshiruvi
-        val isOfficialStore = isInstalledFromOfficialStore(packageInfo.packageName, packageManager)
-        if (!isOfficialStore && score > 0) {
-            // Tashqi manbalardan (APK) yuklangan shubhali ilovalar uchun koeffitsient
+        if (!isOfficialStore && score > 0 && !isUninstalledArchive) {
             score = (score * 1.35).toInt()
         }
 

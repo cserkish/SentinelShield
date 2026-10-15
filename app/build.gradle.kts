@@ -13,10 +13,10 @@ android {
 
     signingConfigs {
         create("release") {
-            storeFile = file("sentinel.keystore")
-            storePassword = "sentinelshieldpass"
-            keyAlias = "sentinelshield"
-            keyPassword = "sentinelshieldpass"
+            storeFile = file(System.getenv("SENTINEL_KEYSTORE_PATH") ?: "sentinel.keystore")
+            storePassword = System.getenv("SENTINEL_STORE_PASSWORD") ?: "sentinelshieldpass"
+            keyAlias = System.getenv("SENTINEL_KEY_ALIAS") ?: "sentinelshield"
+            keyPassword = System.getenv("SENTINEL_KEY_PASSWORD") ?: "sentinelshieldpass"
         }
     }
 
@@ -24,16 +24,9 @@ android {
         applicationId = "uz.sentinel.sentinelshield"
         minSdk = 26
         targetSdk = 35
-        versionCode = 5
-        versionName = "1.3.0"
+        versionCode = 9
+        versionName = "1.6.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-
-        // Room schema export
-        javaCompileOptions {
-            annotationProcessorOptions {
-                arguments["room.schemaLocation"] = "$projectDir/schemas"
-            }
-        }
     }
 
     buildTypes {
@@ -41,7 +34,7 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
-                getDefaultProguardFile("proguard-android.txt"),
+                getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
             signingConfig = signingConfigs.getByName("release")
@@ -81,6 +74,10 @@ android {
         checkReleaseBuilds = false
         abortOnError = false
     }
+}
+
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
 }
 
 dependencies {

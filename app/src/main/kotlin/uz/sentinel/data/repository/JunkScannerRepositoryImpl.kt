@@ -91,7 +91,7 @@ class JunkScannerRepositoryImpl @Inject constructor(
             runCatching {
                 val file = File(item.path)
                 if (file.exists() && isSafeToDelete(file)) {
-                    val size = if (file.isDirectory) file.walkTopDown().sumOf { it.length() } else file.length()
+                    val size = if (file.isDirectory) file.walkTopDown().filter { it.isFile }.sumOf { it.length() } else file.length()
                     if (file.deleteRecursively()) {
                         totalFreedBytes += size
                     }

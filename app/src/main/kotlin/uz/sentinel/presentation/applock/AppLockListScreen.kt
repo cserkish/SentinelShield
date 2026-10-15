@@ -1,5 +1,6 @@
 package uz.sentinel.presentation.applock
 
+import android.Manifest
 import android.app.AppOpsManager
 import android.content.Context
 import android.content.Intent
@@ -9,6 +10,8 @@ import android.net.Uri
 import android.os.Build
 import android.os.Process
 import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -17,7 +20,9 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -30,6 +35,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import kotlinx.coroutines.Dispatchers
@@ -38,12 +44,27 @@ import kotlinx.coroutines.withContext
 import uz.sentinel.data.local.db.LockedAppDao
 import uz.sentinel.data.local.entity.LockedAppEntity
 import uz.sentinel.data.local.prefs.SentinelPreferences
+import uz.sentinel.presentation.theme.*
 import uz.sentinel.service.AppMonitorService
 
 data class AppLockItem(
     val packageName: String,
     val appName: String,
-    val isLocked: Boolean
+    val isLocked: Boolean,
+    val isAntiTamperTarget: Boolean = false
+)
+
+private val CRITICAL_PROTECTABLE_SYSTEM_PACKAGES = setOf(
+    "com.android.settings",
+    "com.google.android.packageinstaller",
+    "com.android.packageinstaller",
+    "com.miui.packageinstaller",
+    "com.samsung.android.packageinstaller",
+    "com.android.vending",
+    "com.android.chrome",
+    "com.sec.android.gallery3d",
+    "com.google.android.apps.photos",
+    "com.google.android.apps.messaging"
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -65,18 +86,30 @@ fun AppLockListScreen(
     var hasUsagePermission by remember {
         mutableStateOf(checkUsageStatsPermission(context))
     }
+    var hasCameraPermission by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+        )
+    }
+
+    val cameraPermLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        hasCameraPermission = granted
+    }
 
     val savedPin by preferences.appLockPinHash.collectAsState(initial = null)
+    val defaultLockMethod by preferences.appLockDefaultMethod.collectAsState(initial = "PIN")
     var showSetPinDialog by remember { mutableStateOf(false) }
     var pendingAppToLock by remember { mutableStateOf<AppLockItem?>(null) }
 
-    // Recheck permissions on resume
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 hasOverlayPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) Settings.canDrawOverlays(context) else true
                 hasUsagePermission = checkUsageStatsPermission(context)
+                hasCameraPermission = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -87,16 +120,33 @@ fun AppLockListScreen(
         withContext(Dispatchers.IO) {
             val pm = context.packageManager
             val installed = pm.getInstalledApplications(PackageManager.GET_META_DATA)
-                .filter { it.flags and ApplicationInfo.FLAG_SYSTEM == 0 || it.packageName == "com.android.chrome" }
+                .filter { app ->
+                    app.packageName != context.packageName && (
+                        (app.flags and ApplicationInfo.FLAG_SYSTEM == 0) ||
+                        app.packageName in CRITICAL_PROTECTABLE_SYSTEM_PACKAGES
+                    )
+                }
             val lockedPackages = lockedAppDao.getLockedPackageNames().toSet()
 
             appList = installed.map { app ->
+                val isAntiTamper = app.packageName in setOf(
+                    "com.android.settings",
+                    "com.google.android.packageinstaller",
+                    "com.android.packageinstaller",
+                    "com.miui.packageinstaller",
+                    "com.samsung.android.packageinstaller"
+                )
                 AppLockItem(
                     packageName = app.packageName,
                     appName = app.loadLabel(pm).toString(),
-                    isLocked = lockedPackages.contains(app.packageName)
+                    isLocked = lockedPackages.contains(app.packageName),
+                    isAntiTamperTarget = isAntiTamper
                 )
-            }.sortedByDescending { it.isLocked }
+            }.sortedWith(
+                compareByDescending<AppLockItem> { it.isLocked }
+                    .thenByDescending { it.isAntiTamperTarget }
+                    .thenBy { it.appName.lowercase() }
+            )
             isLoading = false
         }
     }
@@ -111,6 +161,11 @@ fun AppLockListScreen(
                     }
                 },
                 actions = {
+                    if (!savedPin.isNullOrEmpty()) {
+                        TextButton(onClick = { showSetPinDialog = true }) {
+                            Text("PIN o'zgartirish", color = CyberTeal, fontSize = 12.sp)
+                        }
+                    }
                     IconButton(onClick = onNavigateToIntruderPhotos) {
                         Icon(Icons.Default.CameraAlt, contentDescription = "Suratlar")
                     }
@@ -124,8 +179,7 @@ fun AppLockListScreen(
                 .padding(padding)
                 .padding(16.dp)
         ) {
-            // Permission Warning Banner if missing
-            if (!hasOverlayPermission || !hasUsagePermission) {
+            if (!hasOverlayPermission || !hasUsagePermission || !hasCameraPermission) {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
@@ -135,15 +189,15 @@ fun AppLockListScreen(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Qulflash ishlashi uchun ruxsat kerak", fontWeight = FontWeight.Bold)
+                            Text("To'liq himoya uchun ruxsatlar", fontWeight = FontWeight.Bold)
                         }
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(
-                            "Ilovani qulflash uchun 'Ustma-ust ko'rsatish' va 'Foydalanish statistikasi' ruxsatlarini yoqing.",
+                            "AppLock va Intruder Selfie (bosqinchi rasmini olish) ishlashi uchun quyidagi ruxsatlarni yoqing:",
                             style = MaterialTheme.typography.bodySmall
                         )
                         Spacer(modifier = Modifier.height(10.dp))
-                        Row {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             if (!hasOverlayPermission && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                                 Button(
                                     onClick = {
@@ -154,9 +208,8 @@ fun AppLockListScreen(
                                         context.startActivity(intent)
                                     }
                                 ) {
-                                    Text("Ustma-ust ruxsati")
+                                    Text("Ustma-ust", fontSize = 12.sp)
                                 }
-                                Spacer(modifier = Modifier.width(8.dp))
                             }
                             if (!hasUsagePermission) {
                                 OutlinedButton(
@@ -165,48 +218,75 @@ fun AppLockListScreen(
                                         context.startActivity(intent)
                                     }
                                 ) {
-                                    Text("Statistika ruxsati")
+                                    Text("Statistika", fontSize = 12.sp)
+                                }
+                            }
+                            if (!hasCameraPermission) {
+                                OutlinedButton(
+                                    onClick = { cameraPermLauncher.launch(Manifest.permission.CAMERA) }
+                                ) {
+                                    Text("Kamera (Selfie)", fontSize = 12.sp)
                                 }
                             }
                         }
                     }
                 }
-                Spacer(modifier = Modifier.height(14.dp))
+                Spacer(modifier = Modifier.height(12.dp))
             }
 
+            // Lock Method Selector (PIN / PATTERN / BIOMETRIC)
             uz.sentinel.presentation.components.GlassCard(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(18.dp),
-                backgroundColor = uz.sentinel.presentation.theme.ObsidianSurface,
-                borderColor = uz.sentinel.presentation.theme.GlassBorderTeal,
+                backgroundColor = ObsidianSurface,
+                borderColor = GlassBorderTeal,
                 borderWidth = 1.dp
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Lock,
-                        contentDescription = null,
-                        modifier = Modifier.size(32.dp),
-                        tint = uz.sentinel.presentation.theme.NeonViolet
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column {
-                        Text("Shaxsiy ilovalar himoyasi", fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                        Text(
-                            text = if (savedPin.isNullOrEmpty())
-                                "Ilovalarni qulflash uchun shaxsiy 6 xonali PIN o'rnating."
-                            else
-                                "Qulflangan ilovalar ochilganda PIN kod so'raladi.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = if (defaultLockMethod == "BIOMETRIC") Icons.Default.Fingerprint else Icons.Default.Lock,
+                            contentDescription = null,
+                            modifier = Modifier.size(28.dp),
+                            tint = NeonViolet
                         )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Shaffof Qulf & Anti-Tamper", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            Text(
+                                text = "Sozlamalar ilovasini qulflab qo'ysangiz, begonalar SentinelShield'ni o'chira olmaydi.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 11.sp
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        listOf("PIN" to "PIN Kod", "PATTERN" to "Grafik kalit", "BIOMETRIC" to "Barmoq izi").forEach { (code, label) ->
+                            val selected = defaultLockMethod == code
+                            FilterChip(
+                                selected = selected,
+                                onClick = {
+                                    scope.launch(Dispatchers.IO) {
+                                        preferences.setAppLockDefaultMethod(code)
+                                        lockedAppDao.updateAllLockTypes(code)
+                                    }
+                                },
+                                label = { Text(label, fontSize = 11.sp) }
+                            )
+                        }
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             if (isLoading) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -230,7 +310,8 @@ fun AppLockListScreen(
                                             lockedAppDao.lockApp(
                                                 LockedAppEntity(
                                                     packageName = app.packageName,
-                                                    appName = app.appName
+                                                    appName = app.appName,
+                                                    lockType = defaultLockMethod
                                                 )
                                             )
                                             appList = appList.map {
@@ -255,7 +336,6 @@ fun AppLockListScreen(
         }
     }
 
-    // Set Initial PIN Dialog
     if (showSetPinDialog) {
         SetPinDialog(
             onDismiss = {
@@ -272,7 +352,8 @@ fun AppLockListScreen(
                             lockedAppDao.lockApp(
                                 LockedAppEntity(
                                     packageName = app.packageName,
-                                    appName = app.appName
+                                    appName = app.appName,
+                                    lockType = defaultLockMethod
                                 )
                             )
                         }
@@ -368,8 +449,12 @@ fun AppLockRow(
     uz.sentinel.presentation.components.GlassCard(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(14.dp),
-        backgroundColor = uz.sentinel.presentation.theme.ObsidianSurfaceElev,
-        borderColor = if (item.isLocked) uz.sentinel.presentation.theme.NeonViolet.copy(alpha = 0.4f) else uz.sentinel.presentation.theme.GlassBorderWhite,
+        backgroundColor = ObsidianSurfaceElev,
+        borderColor = when {
+            item.isLocked -> NeonViolet.copy(alpha = 0.45f)
+            item.isAntiTamperTarget -> NeonAmber.copy(alpha = 0.35f)
+            else -> GlassBorderWhite
+        },
         borderWidth = 1.dp
     ) {
         Row(
@@ -378,12 +463,29 @@ fun AppLockRow(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = item.appName,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 15.sp,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = item.appName,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 15.sp,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    if (item.isAntiTamperTarget) {
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = NeonAmber.copy(alpha = 0.15f)
+                        ) {
+                            Text(
+                                text = "🛡️ Anti-Tamper",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = NeonAmber,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                }
                 Text(
                     text = item.packageName,
                     style = MaterialTheme.typography.bodySmall,
@@ -394,8 +496,8 @@ fun AppLockRow(
                 checked = item.isLocked,
                 onCheckedChange = onToggle,
                 colors = SwitchDefaults.colors(
-                    checkedThumbColor = uz.sentinel.presentation.theme.ObsidianBlack,
-                    checkedTrackColor = uz.sentinel.presentation.theme.NeonViolet
+                    checkedThumbColor = ObsidianBlack,
+                    checkedTrackColor = NeonViolet
                 )
             )
         }

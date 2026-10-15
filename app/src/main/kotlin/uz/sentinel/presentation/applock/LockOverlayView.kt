@@ -2,6 +2,7 @@ package uz.sentinel.presentation.applock
 
 import android.content.Context
 import android.util.AttributeSet
+import android.view.KeyEvent
 import android.widget.FrameLayout
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -42,6 +43,7 @@ class LockOverlayView(
 
     private var packageNameState by mutableStateOf("")
     private var onUnlockListener: (() -> Unit)? = null
+    private var onDismissToHomeListener: (() -> Unit)? = null
     private val viewModel = LockScreenViewModel(appLockRepository, intruderSelfieManager)
 
     init {
@@ -56,6 +58,7 @@ class LockOverlayView(
                     LockScreen(
                         packageName = packageNameState,
                         onUnlocked = { onUnlockListener?.invoke() },
+                        onExitToHome = { onDismissToHomeListener?.invoke() },
                         viewModel = viewModel
                     )
                 }
@@ -74,12 +77,27 @@ class LockOverlayView(
         onUnlockListener = listener
     }
 
+    fun setOnDismissToHomeListener(listener: () -> Unit) {
+        onDismissToHomeListener = listener
+    }
+
+    override fun dispatchKeyEvent(event: KeyEvent?): Boolean {
+        if (event?.keyCode == KeyEvent.KEYCODE_BACK && event.action == KeyEvent.ACTION_UP) {
+            onDismissToHomeListener?.invoke()
+            return true
+        }
+        return super.dispatchKeyEvent(event)
+    }
+
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
+        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_START)
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
     }
 
     override fun onDetachedFromWindow() {
+        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE)
+        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_STOP)
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY)
         viewModelStore.clear()
         super.onDetachedFromWindow()

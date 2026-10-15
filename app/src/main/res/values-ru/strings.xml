@@ -27,4 +27,5 @@
     <string name="netguard_title">Сетевая защита NetGuard</string>
     <string name="permissions_title">Аудит разрешений</string>
     <string name="brand_stability_title">Стабильность и батарея</string>
+    <string name="cleaner_cache">Кэш и остаточные файлы</string>
 </resources>
